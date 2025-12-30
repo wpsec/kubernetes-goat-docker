@@ -4,26 +4,20 @@
 
 考虑到国内绝大部分公司的项目依旧习惯使用docker，所以将kubernetes-goat的Container容器切换为docker
 
-<p align="center">
-  <a href="https://madhuakula.com/kubernetes-goat">
-    <img alt="Kubernetes Goat" src="kubernetes-goat-logo.png" width="150" />
-  </a>
-</p>
-<h1 align="center">
-  Kubernetes Goat
-</h1>
-<p align="center">
-    ✨ The Kubernetes Goat is designed to be an intentionally vulnerable cluster environment to learn and practice Kubernetes security 🚀
-</p>
+
+
+# Kubernetes Goat 
+✨ The Kubernetes Goat is designed to be an intentionally vulnerable cluster environment to learn and practice Kubernetes security 🚀 
 
 后续会发布一些关于k8s集群、云原生安全相关内容，欢迎关注公众号
 
-![扫码_搜索联合传播样式-白色版](/Users/eric.sy.wu/Documents/公众号/扫码_搜索联合传播样式-白色版.png)
+<!-- 这是一张图片，ocr 内容为： -->
+![](/Users/eric.sy.wu/Documents/公众号/扫码_搜索联合传播样式-白色版.png)<!-- 这是一张图片，ocr 内容为： -->
+![](https://cdn.nlark.com/yuque/0/2025/png/27875807/1767086980777-389f0fe9-9f2e-4705-810a-08bf4045d2cb.png)
 
 
 
 ## 自行搭建
-
 自行搭建k8s集群环境～
 
 克隆环境
@@ -76,7 +70,7 @@ helm install metadata-db ./scenarios/metadata-db --namespace default --create-na
 
 端口转发
 
-http://xxxx:1234
+[http://xxxx:1234](http://xxxx:1234)
 
 ```yaml
 ./access-kubernetes-goat.sh
@@ -96,8 +90,9 @@ http://xxxx:1234
 
 
 ## K8s一主两从环境
+如果不会想自己搭建，我搭好了，可以直接下载使用
 
-如果不会想自己搭建，我搭好了，可以直接下载使用。
+关注公众号，回复：**k8s **获取下载链接
 
 这里没有使用k3s或其它环境，用的一主两从（简化为一主一从，虚拟机大小越35G）的原生k8s，最大化模拟真实环境，因为我后面会在这个环境下做红蓝两个视角的学习研究
 
@@ -117,16 +112,15 @@ Node1：192.168.66.12
 
 root/toor
 
-![image-20251229115926392](/Users/eric.sy.wu/Library/Application Support/typora-user-images/image-20251229115926392.png)
+<!-- 这是一张图片，ocr 内容为： -->
+![](https://cdn.nlark.com/yuque/0/2025/png/27875807/1767086968630-596b52a4-824b-4711-aa3d-e5da48a46f70.png)
 
 ### 灵镜
-
 推荐使用灵镜进行搭建（待补充）
 
 
 
 ### 使用
-
 ```bash
 # 开启
 cd /root/kubernetes-goat/
@@ -140,10 +134,9 @@ cd /root/kubernetes-goat/
 ./access-kubernetes-goat.sh
 ```
 
-![image-20251229174020398](/Users/eric.sy.wu/Library/Application Support/typora-user-images/image-20251229174020398.png)
+
 
 ### 摸鱼信安交流群
-
 失效请添加公众号回复：摸鱼群
 
-![f66ec2a4bf89758d8b8299d89ef96f4](/Users/eric.sy.wu/Library/Containers/com.microsoft.rdc.macos/Data/tmp/ED03BF4D-055C-4BE2-A477-4C29C3E69533/f66ec2a4bf89758d8b8299d89ef96f4.jpg)
+![](https://cdn.nlark.com/yuque/0/2025/jpeg/27875807/1767087024537-fcc51036-3e41-42bd-9261-e18febd068c4.jpeg)
