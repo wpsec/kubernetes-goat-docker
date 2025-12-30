@@ -22,7 +22,7 @@
 
 克隆环境
 
-[https://github.com/madhuakula/kubernetes-goat](https://github.com/madhuakula/kubernetes-goat)
+[https://github.com/wpsec/kubernetes-goat-docker.git](https://github.com/wpsec/kubernetes-goat-docker.git)
 
 镜像问题，所有 node 打上代理，然后进行拉取
 
