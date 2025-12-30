@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: build-code-deployment
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: build-code
+  template:
+    metadata:
+      labels:
+        app: build-code
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: k8s-node01
+      containers:
+        - name: build-code
+          image: madhuakula/k8s-goat-build-code
+          imagePullPolicy: IfNotPresent
+          resources:
+            limits:
+              memory: "50Mi"
+              cpu: "20m"
+          ports:
+            - containerPort: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: build-code-service
+  namespace: default
+spec:
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+  selector:
+    app: build-code
