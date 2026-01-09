@@ -10,8 +10,8 @@ metadata:
   annotations:
     "helm.sh/hook": test-success
 spec:
-  nodeSelector:
-    kubernetes.io/hostname: k8s-node01
+  # nodeSelector:
+  #   kubernetes.io/hostname: k8s-node01
   containers:
     - name: wget
       image: busybox

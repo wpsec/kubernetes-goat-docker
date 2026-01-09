@@ -7,8 +7,8 @@ spec:
     metadata:
       name: batch-check-job
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: k8s-node01
+      # nodeSelector:
+      #   kubernetes.io/hostname: k8s-node01
       containers:
         - name: batch-check
           image: madhuakula/k8s-goat-batch-check

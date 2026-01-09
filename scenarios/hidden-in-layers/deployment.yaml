@@ -7,8 +7,8 @@ spec:
     metadata:
       name: hidden-in-layers
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: k8s-node01
+      # nodeSelector:
+      #   kubernetes.io/hostname: k8s-node01
       containers:
         - name: hidden-in-layers
           image: madhuakula/k8s-goat-hidden-in-layers

@@ -42,8 +42,8 @@ resources:
     cpu: 30m
     memory: 60Mi
 
-nodeSelector:
-  kubernetes.io/hostname: k8s-node01
+# nodeSelector:
+#   kubernetes.io/hostname: k8s-node01
 
 tolerations: []
 

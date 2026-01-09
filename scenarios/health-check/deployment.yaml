@@ -16,8 +16,8 @@ spec:
       labels:
         app: health-check
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: k8s-node01
+      # nodeSelector:
+      #   kubernetes.io/hostname: k8s-node01
       containers:
         - name: health-check
           image: madhuakula/k8s-goat-health-check

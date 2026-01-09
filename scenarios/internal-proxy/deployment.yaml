@@ -14,8 +14,8 @@ spec:
       labels:
         app: internal-proxy
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: k8s-node01
+      # nodeSelector:
+      #   kubernetes.io/hostname: k8s-node01
       containers:
         - name: internal-api
           image: madhuakula/k8s-goat-internal-api

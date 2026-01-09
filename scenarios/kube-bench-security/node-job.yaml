@@ -6,8 +6,8 @@ metadata:
 spec:
   template:
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: k8s-node01
+      # nodeSelector:
+      #   kubernetes.io/hostname: k8s-node01
       hostPID: true
       containers:
         - name: kube-bench

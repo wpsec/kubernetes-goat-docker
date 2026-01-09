@@ -66,8 +66,8 @@ spec:
       labels:
         app: hunger-check
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: k8s-node01
+      # nodeSelector:
+      #   kubernetes.io/hostname: k8s-node01
       serviceAccountName: big-monolith-sa
       containers:
         - name: hunger-check

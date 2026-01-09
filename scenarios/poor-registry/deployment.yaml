@@ -12,8 +12,8 @@ spec:
       labels:
         app: poor-registry
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: k8s-node01
+      # nodeSelector:
+      #   kubernetes.io/hostname: k8s-node01
       containers:
         - name: poor-registry
           image: madhuakula/k8s-goat-poor-registry

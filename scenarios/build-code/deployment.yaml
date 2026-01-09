@@ -12,8 +12,8 @@ spec:
       labels:
         app: build-code
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: k8s-node01
+      # nodeSelector:
+      #   kubernetes.io/hostname: k8s-node01
       containers:
         - name: build-code
           image: madhuakula/k8s-goat-build-code
