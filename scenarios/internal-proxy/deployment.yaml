@@ -18,13 +18,21 @@ spec:
         - name: internal-api
           image: madhuakula/k8s-goat-internal-api
           imagePullPolicy: IfNotPresent
+          resources:
+            limits:
+              cpu: 50m
+              memory: 60Mi
           ports:
-            - containerPort: 3000
+            - containerPort: 3000 # 对应内网 API 服务
         - name: info-app
           image: madhuakula/k8s-goat-info-app
           imagePullPolicy: IfNotPresent
+          resources:
+            limits:
+              cpu: 30m
+              memory: 50Mi
           ports:
-            - containerPort: 5000
+            - containerPort: 5000 # 对应信息展示应用
 ---
 apiVersion: v1
 kind: Service
@@ -40,47 +48,9 @@ spec:
       protocol: TCP
       port: 3000
       targetPort: 3000
-      nodePort: 30006 # 固定对应宿主机 1236
----
-# Health Check 关卡配置 (对应 1231)
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: health-check-deployment
-spec:
-  selector:
-    matchLabels:
-      app: health-check
-  template:
-    metadata:
-      labels:
-        app: health-check
-    spec:
-      containers:
-        - name: health-check
-          image: madhuakula/k8s-goat-health-check
-          imagePullPolicy: IfNotPresent
-          securityContext:
-            privileged: true
-          volumeMounts:
-            - mountPath: /var/run/cri-dockerd.sock
-              name: docker-sock-volume
-      volumes:
-        - name: docker-sock-volume
-          hostPath:
-            path: /var/run/cri-dockerd.sock
-            type: Socket
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: health-check-service
-spec:
-  type: NodePort
-  ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 80
-      nodePort: 30002 # 匹配宿主机 1231
-  selector:
-    app: health-check
+      nodePort: 30006 # 对应宿主机 1236
+    - name: info-port
+      protocol: TCP
+      port: 5000
+      targetPort: 5000
+      # nodePort: 30007 # 如需开启第二个端口可取消注释
