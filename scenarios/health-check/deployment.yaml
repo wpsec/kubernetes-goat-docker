@@ -49,9 +49,11 @@ kind: Service
 metadata:
   name: health-check-service
 spec:
+  type: NodePort
   ports:
     - protocol: TCP
       port: 80
       targetPort: 80
+      nodePort: 30004
   selector:
     app: health-check

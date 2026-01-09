@@ -48,6 +48,7 @@ metadata:
   name: internal-proxy-api-service
   namespace: default
 spec:
+  type: NodePort
   ports:
     - protocol: TCP
       port: 3000
@@ -61,11 +62,10 @@ metadata:
   name: internal-proxy-info-app-service
   namespace: default
 spec:
-  type: NodePort
   ports:
     - protocol: TCP
       port: 5000
       targetPort: 5000
-      nodePort: 30003
+      nodePort: 30006
   selector:
     app: internal-proxy
