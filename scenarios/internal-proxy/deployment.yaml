@@ -48,7 +48,7 @@ spec:
       protocol: TCP
       port: 3000
       targetPort: 3000
-      nodePort: 30006 # 对应宿主机 1236
+      nodePort: 30004 # 对应宿主机 1233
     - name: info-port
       protocol: TCP
       port: 5000

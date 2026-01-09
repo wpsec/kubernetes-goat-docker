@@ -1,20 +1,19 @@
-apiVersion: v1
-kind: Service
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   name: {{ include "metadata-db.fullname" . }}
-  labels:
-    app.kubernetes.io/name: {{ include "metadata-db.name" . }}
-    helm.sh/chart: {{ include "metadata-db.chart" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/managed-by: {{ .Release.Service }}
 spec:
-  type: {{ .Values.service.type }}
-  ports:
-    - port: {{ .Values.service.port }}
-      targetPort: http
-      protocol: TCP
-      name: http
-      nodePort: {{ .Values.service.nodePort }} # 引用 values.yaml 中的 30001
+  replicas: {{ .Values.replicaCount }}
   selector:
-    app.kubernetes.io/name: {{ include "metadata-db.name" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
+    matchLabels:
+      app: metadata-db
+  template:
+    metadata:
+      labels:
+        app: metadata-db
+    spec:
+      containers:
+        - name: metadata-db
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          ports:
+            - containerPort: 80
