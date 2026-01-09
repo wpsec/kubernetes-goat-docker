@@ -11,7 +11,8 @@ docker+kind+kubernetes-goat+docker 容器运行时
 
 网络映射
 
-<!-- 这是一个文本绘图，源码为：digraph K8sGoatV3 {
+<!-- 这是一个文本绘图，源码为：
+digraph K8sGoatV3_Fixed {
     rankdir=LR;
     node [shape=box, style="filled, rounded", fontname="Arial", fontsize=12];
     compound=true;
@@ -23,13 +24,12 @@ docker+kind+kubernetes-goat+docker 容器运行时
 
     // --- 宿主机端口层 ---
     subgraph cluster_host {
-        label = "宿主机入口 (Host Ports)";
+        label = "宿主机Docker端口映射 (Host Ports)";
         style = dashed;
         color = "#FFA000";
 
         P1230 [label="Port: 1230", fillcolor="#FFF9C4"];
         P1231 [label="Port: 1231", fillcolor="#FFF9C4"];
-        P1232 [label="Port: 1232", fillcolor="#FFF9C4"];
         P1233 [label="Port: 1233", fillcolor="#FFF9C4"];
         P1234 [label="Port: 1234 (首页)", fillcolor="#FFECB3", fontcolor="#E65100", penwidth=2];
         P1235 [label="Port: 1235", fillcolor="#FFF9C4"];
@@ -38,7 +38,7 @@ docker+kind+kubernetes-goat+docker 容器运行时
 
     // --- K8s 内部逻辑层 ---
     subgraph cluster_k8s {
-        label = "Kubernetes 内部 (KinD Node)";
+        label = "Kubernetes 集群 四层负载均衡——Pod";
         style = filled;
         color = "#E3F2FD";
 
@@ -48,32 +48,31 @@ docker+kind+kubernetes-goat+docker 容器运行时
         NP30003 [label="NodePort: 30003", fillcolor="#BBDEFB"];
         NP30004 [label="NodePort: 30004", fillcolor="#BBDEFB"];
         NP30000 [label="NodePort: 30000", fillcolor="#90CAF9", penwidth=2];
-        NP30005 [label="NodePort: 30005", fillcolor="#BBDEFB"];
         NP30006 [label="NodePort: 30006", fillcolor="#BBDEFB"];
 
-        // 目标 Pods (保持原文名称)
+        // 目标 Pods
         Pod_Meta [label="Pod: metadata-db", fillcolor="#C8E6C9"];
-        Pod_Batch [label="Pod: batch-check", fillcolor="#C8E6C9"];
+        Pod_Health [label="Pod: health-check\n(DIND 逃逸)", fillcolor="#FFAB91", fontcolor="#BF360C"]; // 简体中文注释：强调这是核心漏洞点
         Pod_Build [label="Pod: build-code", fillcolor="#C8E6C9"];
-        Pod_Health [label="Pod: health-check", fillcolor="#C8E6C9"];
+        Pod_Batch [label="Pod: batch-check", fillcolor="#C8E6C9"];
         Pod_Home [label="Pod: kubernetes-goat-home", fillcolor="#A5D6A7", penwidth=2];
-        Pod_Hunger [label="Pod: hunger-check", fillcolor="#C8E6C9"];
         Pod_Proxy [label="Pod: internal-proxy", fillcolor="#C8E6C9"];
     }
 
-    // --- 连线逻辑 ---
-    User -> {P1230 P1231 P1232 P1233 P1234 P1235 P1236} [color="#BDBDBD"];
+    // --- 连线逻辑 (对应你当前的实际 kubectl 输出) ---
+    User -> {P1230 P1231 P1233 P1234 P1235 P1236} [color="#BDBDBD"];
 
     P1230 -> NP30001 -> Pod_Meta;
-    P1231 -> NP30002 -> Pod_Batch;
+    P1231 -> NP30002 -> Pod_Health; // 对应你修改后的 1231 -> 30002
     P1232 -> NP30003 -> Pod_Build;
-    P1233 -> NP30004 -> Pod_Health;
+    P1233 -> NP30003 -> Pod_Build; // 根据你 kubectl 输出，build-code 占用了 30003
+    P1235 -> NP30004 -> Pod_Batch;
     P1234 -> NP30000 -> Pod_Home [color="#E65100", penwidth=2];
-    P1235 -> NP30005 -> Pod_Hunger;
     P1236 -> NP30006 -> Pod_Proxy;
-} -->
+}
+-->
 
-![](https://cdn.nlark.com/yuque/__graphviz/92576c29d9872c8c1422012f97262168.svg)
+![](https://cdn.nlark.com/yuque/__graphviz/cb8d0a6b6dd63f9c33dc5f5abf120e17.svg)
 
 构建环境：
 宿主机：Linux moyusec 5.14.0-570.17.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri May 23 22:47:01 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux；Docker version 29.1.4, build 0e6fee6
