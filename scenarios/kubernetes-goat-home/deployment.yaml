@@ -15,10 +15,12 @@ spec:
       containers:
         - name: kubernetes-goat-home
           image: madhuakula/k8s-goat-home
+          # 简体中文注释：修正 1 - 强制使用本地镜像
+          imagePullPolicy: IfNotPresent
           resources:
             limits:
-              memory: "50Mi"
-              cpu: "30m"
+              memory: "100Mi" # 稍微调大一点防止 OOM
+              cpu: "50m"
           ports:
             - containerPort: 80
 ---
@@ -28,9 +30,12 @@ metadata:
   name: kubernetes-goat-home-service
   namespace: default
 spec:
+  # 简体中文注释：修正 2 - 开启 NodePort 供宿主机访问
+  type: NodePort
   ports:
     - protocol: TCP
       port: 80
       targetPort: 80
+      nodePort: 30000 # 必须对应 kind-config.yaml 里的 containerPort
   selector:
     app: kubernetes-goat-home
