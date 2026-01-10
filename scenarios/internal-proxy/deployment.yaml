@@ -48,9 +48,9 @@ spec:
       protocol: TCP
       port: 3000
       targetPort: 3000
-      nodePort: 30004 # 对应宿主机 1233
+      nodePort: 30006 # 对应 kind-config containerPort 30006 -> host 1233
     - name: info-port
       protocol: TCP
       port: 5000
       targetPort: 5000
-      # nodePort: 30007 # 如需开启第二个端口可取消注释
+      nodePort: 30007 # 对应 kind-config containerPort 30007 -> host 1236
