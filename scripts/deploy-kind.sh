@@ -383,7 +383,7 @@ fi
 echo "8) 部署 Internal Proxy"
 kubectl apply -f scenarios/internal-proxy/deployment.yaml
 
-echo "9) 部署其他靶场"
+echo "9) 部署其他靶场 (官方 10 个靶场)"
 for manifest in \
   "scenarios/insecure-rbac/setup.yaml" \
   "scenarios/batch-check/job.yaml" \
@@ -394,10 +394,7 @@ for manifest in \
   "scenarios/kubernetes-goat-home/deployment.yaml" \
   "scenarios/poor-registry/deployment.yaml" \
   "scenarios/system-monitor/deployment.yaml" \
-  "scenarios/hidden-in-layers/deployment.yaml" \
-  "scenarios/docker-bench-security/deployment.yaml" \
-  "scenarios/kube-bench-security/node-job.yaml" \
-  "scenarios/kube-bench-security/master-job.yaml"
+  "scenarios/hidden-in-layers/deployment.yaml"
 do
   if [ -f "$manifest" ]; then
     echo "  - kubectl apply $manifest"
@@ -416,18 +413,3 @@ echo "✅ 环境部署完成"
 echo "=========================================="
 kubectl get pods -A
 kubectl get svc -A
-
-echo ""
-echo "访问地址："
-echo "  - Goat 首页: http://宿主机IP:1234"
-echo "  - Metadata DB: http://宿主机IP:1230"
-echo "  - Health Check: http://宿主机IP:1231"
-echo "  - Build Code: http://宿主机IP:1232"
-echo "  - Poor Registry: http://宿主机IP:1238"
-echo "  - Hunger Check: http://宿主机IP:1235"
-echo "  - Internal Proxy API: http://宿主机IP:1233"
-echo "  - Internal Proxy Info: http://宿主机IP:1236"
-echo "  - System Monitor: http://宿主机IP:1237"
-echo "  - Internal Proxy API: http://宿主机IP:1233"
-echo "  - Hunger Check: http://宿主机IP:1235"
-

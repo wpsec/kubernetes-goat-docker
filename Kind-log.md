@@ -204,4 +204,253 @@ kind-k8s-goat-moyusec-lingjing:v3.0
 
 ```bash
 [root@moyusec DKinD]# docker logs  -f kind-k8s-goat
+======================================================
+      摸鱼信安 + 灵镜联合发布 - K8s 安全实验环境 (V3.0)
+      欢迎关注：微信公众号：摸鱼信安 + Sec铁匠铺
+======================================================
+正在启动内部 Docker 守护进程...
+加载 KinD 节点镜像...
+Loaded image: kindest/node:v1.27.3
+No kind clusters found.
+创建 K8s 集群...
+No kind clusters found.
+Creating cluster "kind" ...
+ • Ensuring node image (kindest/node:v1.27.3) 🖼  ...
+ ✓ Ensuring node image (kindest/node:v1.27.3) 🖼
+ • Preparing nodes 📦 📦 📦   ...
+ ✓ Preparing nodes 📦 📦 📦
+ • Writing configuration 📜  ...
+ ✓ Writing configuration 📜
+ • Starting control-plane 🕹️  ...
+ ✓ Starting control-plane 🕹️
+ • Installing CNI 🔌  ...
+ ✓ Installing CNI 🔌
+ • Installing StorageClass 💾  ...
+ ✓ Installing StorageClass 💾
+ • Joining worker nodes 🚜  ...
+ ✓ Joining worker nodes 🚜
+ • Waiting ≤ 5m0s for control-plane = Ready ⏳  ...
+ ✓ Waiting ≤ 5m0s for control-plane = Ready ⏳
+ • Ready after 1s 💚
+Set kubectl context to "kind-kind"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-kind
+
+Have a question, bug, or feature request? Let us know! https://kind.sigs.k8s.io/#community 🙂
+加载并分发靶场镜像...
+Loaded image: madhuakula/k8s-goat-health-check:latest
+Loaded image: madhuakula/k8s-goat-system-monitor:latest
+Loaded image: madhuakula/k8s-goat-home:latest
+Loaded image: madhuakula/k8s-goat-hidden-in-layers:latest
+Loaded image: madhuakula/k8s-goat-metadata-db:latest
+Loaded image: madhuakula/k8s-goat-info-app:latest
+Loaded image: madhuakula/k8s-goat-cache-store:latest
+Loaded image: madhuakula/k8s-goat-batch-check:latest
+Loaded image: madhuakula/k8s-goat-build-code:latest
+Loaded image: madhuakula/k8s-goat-poor-registry:latest
+Loaded image: madhuakula/k8s-goat-internal-api:latest
+Loaded image: madhuakula/k8s-goat-hunger-check:latest
+Image: "madhuakula/k8s-goat-internal-api:latest" with ID "sha256:dcbb865da54d7b92e77cfd1afe2824580416c95f3a825f9634090201e48a5634" not yet present on node "kind-control-plane", loading...
+Image: "madhuakula/k8s-goat-internal-api:latest" with ID "sha256:dcbb865da54d7b92e77cfd1afe2824580416c95f3a825f9634090201e48a5634" not yet present on node "kind-worker", loading...
+Image: "madhuakula/k8s-goat-internal-api:latest" with ID "sha256:dcbb865da54d7b92e77cfd1afe2824580416c95f3a825f9634090201e48a5634" not yet present on node "kind-worker2", loading...
+Image: "madhuakula/k8s-goat-hunger-check:latest" with ID "sha256:cc0a3c5c2b61cbc145683f627e300176a3866f4f54f91fc205eedcef16038632" not yet present on node "kind-control-plane", loading...
+Image: "madhuakula/k8s-goat-hunger-check:latest" with ID "sha256:cc0a3c5c2b61cbc145683f627e300176a3866f4f54f91fc205eedcef16038632" not yet present on node "kind-worker", loading...
+Image: "madhuakula/k8s-goat-hunger-check:latest" with ID "sha256:cc0a3c5c2b61cbc145683f627e300176a3866f4f54f91fc205eedcef16038632" not yet present on node "kind-worker2", loading...
+Image: "madhuakula/k8s-goat-health-check:latest" with ID "sha256:14e2480c8e9fe4bdfa6a7ec4cce3676dbce89012f5a6f5d7fe2a62d51384abb3" not yet present on node "kind-control-plane", loading...
+Image: "madhuakula/k8s-goat-health-check:latest" with ID "sha256:14e2480c8e9fe4bdfa6a7ec4cce3676dbce89012f5a6f5d7fe2a62d51384abb3" not yet present on node "kind-worker", loading...
+Image: "madhuakula/k8s-goat-health-check:latest" with ID "sha256:14e2480c8e9fe4bdfa6a7ec4cce3676dbce89012f5a6f5d7fe2a62d51384abb3" not yet present on node "kind-worker2", loading...
+Image: "madhuakula/k8s-goat-system-monitor:latest" with ID "sha256:7c4493a61a7cfc74da9f1110a68d73e5cac518b99e98af8739670574c66a79af" not yet present on node "kind-control-plane", loading...
+Image: "madhuakula/k8s-goat-system-monitor:latest" with ID "sha256:7c4493a61a7cfc74da9f1110a68d73e5cac518b99e98af8739670574c66a79af" not yet present on node "kind-worker", loading...
+Image: "madhuakula/k8s-goat-system-monitor:latest" with ID "sha256:7c4493a61a7cfc74da9f1110a68d73e5cac518b99e98af8739670574c66a79af" not yet present on node "kind-worker2", loading...
+Image: "madhuakula/k8s-goat-home:latest" with ID "sha256:5e3978d00bbb24b32696b08b1022919f35c7ade4864286a7407ff5166052139e" not yet present on node "kind-control-plane", loading...
+Image: "madhuakula/k8s-goat-home:latest" with ID "sha256:5e3978d00bbb24b32696b08b1022919f35c7ade4864286a7407ff5166052139e" not yet present on node "kind-worker", loading...
+Image: "madhuakula/k8s-goat-home:latest" with ID "sha256:5e3978d00bbb24b32696b08b1022919f35c7ade4864286a7407ff5166052139e" not yet present on node "kind-worker2", loading...
+Image: "madhuakula/k8s-goat-info-app:latest" with ID "sha256:57e24cd7eb27b420e066eb86d8092f43bd1d075b899af2865fca74c658b25f3a" not yet present on node "kind-control-plane", loading...
+Image: "madhuakula/k8s-goat-info-app:latest" with ID "sha256:57e24cd7eb27b420e066eb86d8092f43bd1d075b899af2865fca74c658b25f3a" not yet present on node "kind-worker", loading...
+Image: "madhuakula/k8s-goat-info-app:latest" with ID "sha256:57e24cd7eb27b420e066eb86d8092f43bd1d075b899af2865fca74c658b25f3a" not yet present on node "kind-worker2", loading...
+Image: "madhuakula/k8s-goat-hidden-in-layers:latest" with ID "sha256:285cbdc185fff63b1df260afade65d85fa3be199bba280f8936fdb303f88b14f" not yet present on node "kind-control-plane", loading...
+Image: "madhuakula/k8s-goat-hidden-in-layers:latest" with ID "sha256:285cbdc185fff63b1df260afade65d85fa3be199bba280f8936fdb303f88b14f" not yet present on node "kind-worker", loading...
+Image: "madhuakula/k8s-goat-hidden-in-layers:latest" with ID "sha256:285cbdc185fff63b1df260afade65d85fa3be199bba280f8936fdb303f88b14f" not yet present on node "kind-worker2", loading...
+Image: "madhuakula/k8s-goat-cache-store:latest" with ID "sha256:aa2bf2205b2c25eb78a7b3a5547d0402d0c4111aaef89da54b6785aaa6a6e28d" not yet present on node "kind-control-plane", loading...
+Image: "madhuakula/k8s-goat-cache-store:latest" with ID "sha256:aa2bf2205b2c25eb78a7b3a5547d0402d0c4111aaef89da54b6785aaa6a6e28d" not yet present on node "kind-worker", loading...
+Image: "madhuakula/k8s-goat-cache-store:latest" with ID "sha256:aa2bf2205b2c25eb78a7b3a5547d0402d0c4111aaef89da54b6785aaa6a6e28d" not yet present on node "kind-worker2", loading...
+Image: "madhuakula/k8s-goat-batch-check:latest" with ID "sha256:a79437e72bc1b7f624b294bbe76a41cc570c0d9e2d997b43531821ec19aab5d6" not yet present on node "kind-control-plane", loading...
+Image: "madhuakula/k8s-goat-batch-check:latest" with ID "sha256:a79437e72bc1b7f624b294bbe76a41cc570c0d9e2d997b43531821ec19aab5d6" not yet present on node "kind-worker", loading...
+Image: "madhuakula/k8s-goat-batch-check:latest" with ID "sha256:a79437e72bc1b7f624b294bbe76a41cc570c0d9e2d997b43531821ec19aab5d6" not yet present on node "kind-worker2", loading...
+Image: "madhuakula/k8s-goat-build-code:latest" with ID "sha256:b8973f272a0a12c97ef17d396075104e61b7a2d53c104f7e77344f53d009ec8e" not yet present on node "kind-control-plane", loading...
+Image: "madhuakula/k8s-goat-build-code:latest" with ID "sha256:b8973f272a0a12c97ef17d396075104e61b7a2d53c104f7e77344f53d009ec8e" not yet present on node "kind-worker", loading...
+Image: "madhuakula/k8s-goat-build-code:latest" with ID "sha256:b8973f272a0a12c97ef17d396075104e61b7a2d53c104f7e77344f53d009ec8e" not yet present on node "kind-worker2", loading...
+Image: "madhuakula/k8s-goat-poor-registry:latest" with ID "sha256:003fcd9d9071a5b0d1f8d1336430c1ee01d4dc8b0d575e3798d48a803274126b" not yet present on node "kind-control-plane", loading...
+Image: "madhuakula/k8s-goat-poor-registry:latest" with ID "sha256:003fcd9d9071a5b0d1f8d1336430c1ee01d4dc8b0d575e3798d48a803274126b" not yet present on node "kind-worker", loading...
+Image: "madhuakula/k8s-goat-poor-registry:latest" with ID "sha256:003fcd9d9071a5b0d1f8d1336430c1ee01d4dc8b0d575e3798d48a803274126b" not yet present on node "kind-worker2", loading...
+Image: "madhuakula/k8s-goat-metadata-db:latest" with ID "sha256:0ff4eace8cd5bd0459e7fc568e0b3b0e0885690a85feccbb18b75b462a705253" not yet present on node "kind-control-plane", loading...
+Image: "madhuakula/k8s-goat-metadata-db:latest" with ID "sha256:0ff4eace8cd5bd0459e7fc568e0b3b0e0885690a85feccbb18b75b462a705253" not yet present on node "kind-worker", loading...
+Image: "madhuakula/k8s-goat-metadata-db:latest" with ID "sha256:0ff4eace8cd5bd0459e7fc568e0b3b0e0885690a85feccbb18b75b462a705253" not yet present on node "kind-worker2", loading...
+修复 YAML 中 CRI socket 路径...
+清理旧的 Metadata DB 和 Internal Proxy...
+部署 Metadata DB...
+部署 Internal Proxy...
+部署其他靶场...
+等待 Pod 就绪...
+== K8s-Goat 离线部署脚本 ==
+ROOT_DIR=/opt/kubernetes-goat
+1) 加载 Kind 节点镜像
+  - kind_node_v1.27.3.tar.gz not found, skipping
+2) 创建 Kind 集群
+  - kind cluster 'kind' already exists
+3) 加载离线镜像
+  - k8s_goat_images_offline.tar.gz not found, skipping
+4) 修正 CRI socket 路径
+    - update ./scenarios/docker-bench-security/deployment.yaml: /var/run/cri-dockerd.sock -> /run/containerd/containerd.sock
+    - update ./scenarios/docker-bench-security/deployment.yaml: docker-sock-volume -> containerd-sock-volume
+    - update ./scenarios/health-check/deployment.yaml: /var/run/cri-dockerd.sock -> /run/containerd/containerd.sock
+    - update ./scenarios/health-check/deployment.yaml: docker-sock-volume -> containerd-sock-volume
+5) 清理旧资源
+6) 卸载遗留 Helm
+7) 部署 Metadata DB
+Release "metadata-db" does not exist. Installing it now.
+NAME: metadata-db
+LAST DEPLOYED: Sat Jan 10 07:58:51 2026
+NAMESPACE: default
+STATUS: deployed
+REVISION: 1
+NOTES:
+1. Get the application URL by running these commands:
+  export NODE_PORT=$(kubectl get --namespace default -o jsonpath="{.spec.ports[0].nodePort}" services metadata-db)
+  export NODE_IP=$(kubectl get nodes --namespace default -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+8) 部署 Internal Proxy
+deployment.apps/internal-proxy-deployment created
+service/internal-proxy-api-service created
+9) 部署其他靶场
+  - kubectl apply scenarios/insecure-rbac/setup.yaml
+serviceaccount/superadmin created
+clusterrolebinding.rbac.authorization.k8s.io/superadmin created
+  - kubectl apply scenarios/batch-check/job.yaml
+job.batch/batch-check-job created
+  - kubectl apply scenarios/build-code/deployment.yaml
+deployment.apps/build-code-deployment created
+service/build-code-service created
+  - kubectl apply scenarios/cache-store/deployment.yaml
+namespace/secure-middleware created
+service/cache-store-service created
+deployment.apps/cache-store-deployment created
+  - kubectl apply scenarios/health-check/deployment.yaml
+deployment.apps/health-check-deployment created
+service/health-check-service created
+  - kubectl apply scenarios/hunger-check/deployment.yaml
+namespace/big-monolith created
+role.rbac.authorization.k8s.io/secret-reader created
+rolebinding.rbac.authorization.k8s.io/secret-reader-binding created
+serviceaccount/big-monolith-sa created
+secret/vaultapikey created
+secret/webhookapikey created
+deployment.apps/hunger-check-deployment created
+service/hunger-check-service created
+  - kubectl apply scenarios/kubernetes-goat-home/deployment.yaml
+deployment.apps/kubernetes-goat-home-deployment created
+service/kubernetes-goat-home-service created
+  - kubectl apply scenarios/poor-registry/deployment.yaml
+deployment.apps/poor-registry-deployment created
+service/poor-registry-service created
+  - kubectl apply scenarios/system-monitor/deployment.yaml
+secret/goatvault created
+deployment.apps/system-monitor-deployment created
+service/system-monitor-service created
+  - kubectl apply scenarios/hidden-in-layers/deployment.yaml
+job.batch/hidden-in-layers created
+  - kubectl apply scenarios/docker-bench-security/deployment.yaml
+daemonset.apps/docker-bench-security created
+  - kubectl apply scenarios/kube-bench-security/node-job.yaml
+job.batch/kube-bench-node created
+  - kubectl apply scenarios/kube-bench-security/master-job.yaml
+job.batch/kube-bench-master created
+10) 等待 Pod 就绪
+pod/hunger-check-deployment-58f45d489c-r5jm8 condition met
+pod/batch-check-job-tsq7k condition met
+pod/build-code-deployment-6d699c7bf-8fdtn condition met
+timed out waiting for the condition on pods/docker-bench-security-d5mmm
+timed out waiting for the condition on pods/docker-bench-security-hrrz2
+timed out waiting for the condition on pods/health-check-deployment-69d9775c9-qj9wv
+timed out waiting for the condition on pods/hidden-in-layers-pbrfn
+timed out waiting for the condition on pods/internal-proxy-deployment-5f798497bf-5qj2c
+timed out waiting for the condition on pods/kube-bench-master-hnj9k
+timed out waiting for the condition on pods/kube-bench-node-hhvml
+timed out waiting for the condition on pods/kubernetes-goat-home-deployment-54786cdcc-9dlgh
+timed out waiting for the condition on pods/metadata-db-78c9877b47-ks7cc
+timed out waiting for the condition on pods/poor-registry-deployment-54c57f59b9-nhtlw
+timed out waiting for the condition on pods/system-monitor-deployment-6d9b4fcdc5-6dshv
+timed out waiting for the condition on pods/coredns-5d78c9869d-4h5wt
+timed out waiting for the condition on pods/coredns-5d78c9869d-l9dcx
+timed out waiting for the condition on pods/etcd-kind-control-plane
+timed out waiting for the condition on pods/kindnet-4d2xk
+timed out waiting for the condition on pods/kindnet-gzfsr
+timed out waiting for the condition on pods/kindnet-lth7d
+timed out waiting for the condition on pods/kube-apiserver-kind-control-plane
+timed out waiting for the condition on pods/kube-controller-manager-kind-control-plane
+timed out waiting for the condition on pods/kube-proxy-lkxmf
+timed out waiting for the condition on pods/kube-proxy-qnhn2
+timed out waiting for the condition on pods/kube-proxy-vgx5k
+timed out waiting for the condition on pods/kube-scheduler-kind-control-plane
+timed out waiting for the condition on pods/local-path-provisioner-6bc4bddd6b-rhvcq
+timed out waiting for the condition on pods/cache-store-deployment-6df68cdf5b-65mnp
+
+==========================================
+✅ 环境部署完成
+==========================================
+NAMESPACE            NAME                                              READY   STATUS             RESTARTS      AGE
+big-monolith         hunger-check-deployment-58f45d489c-r5jm8          1/1     Running            0             5m7s
+default              batch-check-job-tsq7k                             1/1     Running            0             5m11s
+default              build-code-deployment-6d699c7bf-8fdtn             1/1     Running            0             5m10s
+default              docker-bench-security-d5mmm                       0/1     ErrImagePull       0             5m2s
+default              docker-bench-security-hrrz2                       0/1     ImagePullBackOff   0             5m2s
+default              health-check-deployment-69d9775c9-qj9wv           1/1     Running            0             5m8s
+default              hidden-in-layers-pbrfn                            1/1     Running            0             5m3s
+default              internal-proxy-deployment-5f798497bf-5qj2c        2/2     Running            0             5m12s
+default              kube-bench-master-hnj9k                           0/1     ErrImagePull       0             5m1s
+default              kube-bench-node-hhvml                             0/1     ImagePullBackOff   0             5m1s
+default              kubernetes-goat-home-deployment-54786cdcc-9dlgh   1/1     Running            0             5m6s
+default              metadata-db-78c9877b47-ks7cc                      1/1     Running            0             5m35s
+default              poor-registry-deployment-54c57f59b9-nhtlw         1/1     Running            0             5m5s
+default              system-monitor-deployment-6d9b4fcdc5-6dshv        1/1     Running            0             5m4s
+kube-system          coredns-5d78c9869d-4h5wt                          1/1     Running            0             14m
+kube-system          coredns-5d78c9869d-l9dcx                          1/1     Running            0             14m
+kube-system          etcd-kind-control-plane                           1/1     Running            0             14m
+kube-system          kindnet-4d2xk                                     1/1     Running            0             14m
+kube-system          kindnet-gzfsr                                     1/1     Running            1 (14m ago)   14m
+kube-system          kindnet-lth7d                                     1/1     Running            0             14m
+kube-system          kube-apiserver-kind-control-plane                 1/1     Running            0             14m
+kube-system          kube-controller-manager-kind-control-plane        1/1     Running            0             14m
+kube-system          kube-proxy-lkxmf                                  1/1     Running            0             14m
+kube-system          kube-proxy-qnhn2                                  1/1     Running            0             14m
+kube-system          kube-proxy-vgx5k                                  1/1     Running            0             14m
+kube-system          kube-scheduler-kind-control-plane                 1/1     Running            0             14m
+local-path-storage   local-path-provisioner-6bc4bddd6b-rhvcq           1/1     Running            0             14m
+secure-middleware    cache-store-deployment-6df68cdf5b-65mnp           1/1     Running            0             5m9s
+NAMESPACE           NAME                           TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                         AGE
+big-monolith        hunger-check-service           NodePort    10.102.54.116    <none>        8080:30005/TCP                  5m7s
+default             build-code-service             NodePort    10.111.244.3     <none>        3000:30003/TCP                  5m10s
+default             health-check-service           NodePort    10.96.101.223    <none>        80:30002/TCP                    5m8s
+default             internal-proxy-api-service     NodePort    10.110.10.210    <none>        3000:30006/TCP,5000:30007/TCP   5m12s
+default             kubernetes                     ClusterIP   10.96.0.1        <none>        443/TCP                         14m
+default             kubernetes-goat-home-service   NodePort    10.106.226.136   <none>        80:30000/TCP                    5m6s
+default             metadata-db                    NodePort    10.100.223.2     <none>        80:30001/TCP                    5m35s
+default             poor-registry-service          NodePort    10.104.171.60    <none>        5000:30004/TCP                  5m5s
+default             system-monitor-service         NodePort    10.109.58.123    <none>        8080:30008/TCP                  5m4s
+kube-system         kube-dns                       ClusterIP   10.96.0.10       <none>        53/UDP,53/TCP,9153/TCP          14m
+secure-middleware   cache-store-service            ClusterIP   10.99.78.255     <none>        6379/TCP                        5m9s
+
+访问地址：
+  - Goat 首页: http://宿主机IP:1234
+  - Metadata DB: http://宿主机IP:1230
+  - Health Check: http://宿主机IP:1231
+  - Build Code: http://宿主机IP:1232
+  - Poor Registry: http://宿主机IP:1238
+  - Hunger Check: http://宿主机IP:1235
+  - Internal Proxy API: http://宿主机IP:1233
+  - Internal Proxy Info: http://宿主机IP:1236
+  - System Monitor: http://宿主机IP:1237
+  - Internal Proxy API: http://宿主机IP:1233
+  - Hunger Check: http://宿主机IP:1235
 ```
