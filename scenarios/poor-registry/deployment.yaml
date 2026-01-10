@@ -31,9 +31,11 @@ metadata:
   name: poor-registry-service
   namespace: default
 spec:
+  type: NodePort
   ports:
     - protocol: TCP
       port: 5000
       targetPort: 5000
+      nodePort: 30004
   selector:
     app: poor-registry
