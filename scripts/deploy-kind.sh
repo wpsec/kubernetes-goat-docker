@@ -230,6 +230,12 @@ ENTRY
     echo "  ✓ wrote entrypoint.sh"
   fi
 
+  # Load base image if tar file exists
+  if [ -f "$ROOT_DIR/docker:24-dind.tar" ]; then
+    echo "Loading docker:24-dind base image..."
+    docker load -i "$ROOT_DIR/docker:24-dind.tar" || true
+  fi
+
   # Build image
   echo "Building Docker image $IMAGE_TAG..."
   BUILD_ARGS=""
