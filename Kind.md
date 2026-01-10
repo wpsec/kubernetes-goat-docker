@@ -1,4 +1,5 @@
-kubernetes-goat-containerd
+## kubernetes-goat-containerd
+
 注意：使用 kind 部署的 kubernetes-goat 环境 只支持 containerd 容器，所以这套环境是
 docker 部署的
 docker+kind+kubernetes-goat+containerd 容器运行时
@@ -87,16 +88,22 @@ docker+kind+kubernetes-goat+docker 容器运行时
 }
  -->
 
+## 访问路径
+
 网络因为方便访问，住了 nodeport 映射到宿主机端口，所以跟官方的端口不太一样
 
 <!-- 这是一张图片，ocr 内容为： -->
 
 ![](https://cdn.nlark.com/yuque/0/2026/png/27875807/1768038097304-7debea6e-864a-4b7f-bd7a-7041ae756e27.png)
 
+## 导入镜像
+
 ```bash
 # docker save -o kind-k8s-goat-v3.tar kind-k8s-goat-moyusec-lingjing:v3.0
 docker load -i kind-k8s-goat-v3.tar
 ```
+
+## 运行集群
 
 4c4g 启动时间大概在 12 分钟左右，取决于你机器的配置，请耐心等待
 
