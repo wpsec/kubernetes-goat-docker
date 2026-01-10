@@ -3,6 +3,7 @@ set -euo pipefail
 
 # deploy-kind.sh
 # 自动检测环境 - 如果缺少 kubectl/kind/helm，自动启动 DinD 容器进行离线部署
+# 支持代理: 设置环境变量 HTTP_PROXY/HTTPS_PROXY 或使用 --proxy 参数
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
@@ -13,8 +14,44 @@ OFFLINE_IMAGES_FILE="k8s_goat_images_offline.tar.gz"
 KIND_CONFIG="kind-config.yaml"
 HELM_VALUES="./scenarios/metadata-db/values.yaml"
 
+# 代理配置
+HTTP_PROXY="${HTTP_PROXY:-}"
+HTTPS_PROXY="${HTTPS_PROXY:-}"
+NO_PROXY="${NO_PROXY:-}"
+
+# 解析命令行参数
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --proxy)
+      HTTP_PROXY="$2"
+      HTTPS_PROXY="$2"
+      shift 2
+      ;;
+    --http-proxy)
+      HTTP_PROXY="$2"
+      shift 2
+      ;;
+    --https-proxy)
+      HTTPS_PROXY="$2"
+      shift 2
+      ;;
+    --no-proxy)
+      NO_PROXY="$2"
+      shift 2
+      ;;
+    *)
+      echo "Unknown option: $1"
+      exit 1
+      ;;
+  esac
+done
+
 echo "== K8s-Goat 离线部署脚本 =="
 echo "ROOT_DIR=$ROOT_DIR"
+if [ -n "$HTTP_PROXY" ]; then
+  echo "HTTP_PROXY=$HTTP_PROXY"
+  echo "HTTPS_PROXY=$HTTPS_PROXY"
+fi
 
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -22,6 +59,42 @@ require_cmd() {
   fi
   return 0
 }
+
+show_help() {
+  cat <<EOF
+用法: $0 [选项]
+
+选项:
+  --proxy URL           同时设置 HTTP_PROXY 和 HTTPS_PROXY
+  --http-proxy URL      设置 HTTP_PROXY
+  --https-proxy URL     设置 HTTPS_PROXY
+  --no-proxy HOSTS      设置 NO_PROXY（多个主机用逗号分隔）
+
+环境变量:
+  HTTP_PROXY           HTTP 代理地址
+  HTTPS_PROXY          HTTPS 代理地址
+  NO_PROXY             不需要代理的主机列表
+
+示例:
+  # 使用代理参数
+  bash scripts/deploy-kind.sh --proxy http://192.168.246.76:7897
+
+  # 使用环境变量
+  export HTTP_PROXY=http://192.168.246.76:7897
+  export HTTPS_PROXY=http://192.168.246.76:7897
+  bash scripts/deploy-kind.sh
+
+  # 不使用代理（默认）
+  bash scripts/deploy-kind.sh
+
+EOF
+}
+
+# 检查是否请求帮助
+if [[ "${1:-}" == "-h" ]] || [[ "${1:-}" == "--help" ]]; then
+  show_help
+  exit 0
+fi
 
 # Check docker (required)
 if ! require_cmd docker; then
@@ -81,6 +154,18 @@ KINDCFG
   if [ ! -f "$ROOT_DIR/Dockerfile" ]; then
     cat > "$ROOT_DIR/Dockerfile" <<'DOCKERF'
 FROM docker:24-dind
+
+# 接收代理参数
+ARG HTTP_PROXY=""
+ARG HTTPS_PROXY=""
+ARG NO_PROXY=""
+
+ENV HTTP_PROXY=$HTTP_PROXY
+ENV HTTPS_PROXY=$HTTPS_PROXY
+ENV NO_PROXY=$NO_PROXY
+ENV http_proxy=$HTTP_PROXY
+ENV https_proxy=$HTTPS_PROXY
+ENV no_proxy=$NO_PROXY
 
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories && \
     apk add --no-cache curl bash openssl git
@@ -147,7 +232,17 @@ ENTRY
 
   # Build image
   echo "Building Docker image $IMAGE_TAG..."
-  docker build --no-cache -t "$IMAGE_TAG" "$ROOT_DIR"
+  BUILD_ARGS=""
+  if [ -n "$HTTP_PROXY" ]; then
+    BUILD_ARGS="$BUILD_ARGS --build-arg HTTP_PROXY=$HTTP_PROXY"
+    BUILD_ARGS="$BUILD_ARGS --build-arg HTTPS_PROXY=$HTTPS_PROXY"
+    if [ -n "$NO_PROXY" ]; then
+      BUILD_ARGS="$BUILD_ARGS --build-arg NO_PROXY=$NO_PROXY"
+    fi
+  fi
+  
+  # shellcheck disable=SC2086
+  docker build --no-cache $BUILD_ARGS -t "$IMAGE_TAG" "$ROOT_DIR"
 
   # Run container
   if ! docker ps --format '{{.Names}}' | grep -q '^kind-k8s-goat$'; then
@@ -155,7 +250,7 @@ ENTRY
     docker run --privileged -d --name kind-k8s-goat \
       --memory="4g" --cpus="4" \
       -p 1234:1234 -p 1230:1230 -p 1231:1231 -p 1232:1232 \
-      -p 1233:1233 -p 1235:1235 -p 1236:1236 \
+      -p 1233:1233 -p 1235:1235 -p 1236:1236 -p 1238:1238 -p 1237:1237 \
       "$IMAGE_TAG"
   fi
 
