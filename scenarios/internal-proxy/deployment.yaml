@@ -18,6 +18,8 @@ spec:
         - name: internal-api
           image: madhuakula/k8s-goat-internal-api
           imagePullPolicy: IfNotPresent
+          command: ["node"]
+          args: ["server.js", "0.0.0.0"]
           resources:
             limits:
               cpu: 50m

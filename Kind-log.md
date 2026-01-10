@@ -13,7 +13,7 @@ apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
 - role: control-plane
   extraPortMappings:
-  - containerPort: 30000  # Goat 首页
+  - containerPort: 30000  # Kubernetes Goat Home (首页)
     hostPort: 1234
   - containerPort: 30001  # Metadata DB
     hostPort: 1230
@@ -21,18 +21,21 @@ nodes:
     hostPort: 1231
   - containerPort: 30003  # Build Code
     hostPort: 1232
+  - containerPort: 30004  # Poor Registry
+    hostPort: 1238
+  - containerPort: 30005  # Hunger Check
+    hostPort: 1235
   - containerPort: 30006  # Internal Proxy API
     hostPort: 1233
   - containerPort: 30007  # Internal Proxy Info
     hostPort: 1236
-  - containerPort: 30005  # Hunger Check
-    hostPort: 1235
+  - containerPort: 30008  # System Monitor
+    hostPort: 1237
 - role: worker
 - role: worker
 networking:
   podSubnet: "10.244.0.0/16"
   serviceSubnet: "10.96.0.0/12"
-
 ```
 
 ```Dockerfile
