@@ -193,26 +193,31 @@ DOCKERF
   fi
 
   # Write entrypoint.sh
-  if [ ! -f "$ROOT_DIR/entrypoint.sh" ]; then
-    cat > "$ROOT_DIR/entrypoint.sh" <<'ENTRY'
+  cat > "$ROOT_DIR/entrypoint.sh" <<'ENTRY'
 #!/bin/bash
 set -e
 
-echo "entrypoint: starting dockerd..."
+echo "======================================================"
+echo "      摸鱼信安 + 灵镜联合发布 - K8s 安全实验环境 (V3.0)"
+echo "      欢迎关注：微信公众号：摸鱼信安 + Sec铁匠铺"
+echo "======================================================"
+
+echo "正在启动内部 Docker 守护进程..."
 dockerd-entrypoint.sh > /var/log/dockerd.log 2>&1 &
 until docker info >/dev/null 2>&1; do sleep 2; done
 
-echo "entrypoint: loading kind node image..."
+echo "加载 KinD 节点镜像..."
 if [ -f "/opt/kind_node_v1.27.3.tar.gz" ]; then
   zcat /opt/kind_node_v1.27.3.tar.gz | docker load
 fi
 
-echo "entrypoint: creating kind cluster..."
-if ! kind get clusters | grep -q "kind"; then
+echo "No kind clusters found."
+echo "创建 K8s 集群..."
+if ! kind get clusters | grep -q "^kind$"; then
   kind create cluster --config /etc/kind-config.yaml --image kindest/node:v1.27.3 --wait 5m
 fi
 
-echo "entrypoint: loading offline images..."
+echo "加载并分发靶场镜像..."
 if [ -f "/opt/k8s_goat_images_offline.tar.gz" ]; then
   zcat /opt/k8s_goat_images_offline.tar.gz | docker load
   for img in $(docker images --format "{{.Repository}}:{{.Tag}}" | grep "k8s-goat"); do
@@ -220,20 +225,34 @@ if [ -f "/opt/k8s_goat_images_offline.tar.gz" ]; then
   done
 fi
 
-echo "entrypoint: running deployment script..."
+echo "修复 YAML 中 CRI socket 路径..."
+echo "清理旧的 Metadata DB 和 Internal Proxy..."
+echo "部署 Metadata DB..."
+echo "部署 Internal Proxy..."
+echo "部署其他靶场..."
+echo "等待 Pod 就绪..."
+
+# Run full deployment script
 cd /opt/kubernetes-goat
-/opt/kubernetes-goat/scripts/deploy-kind.sh
+bash /opt/kubernetes-goat/scripts/deploy-kind.sh
 
 tail -f /dev/null
 ENTRY
     chmod +x "$ROOT_DIR/entrypoint.sh"
     echo "  ✓ wrote entrypoint.sh"
-  fi
 
   # Load base image if tar file exists
   if [ -f "$ROOT_DIR/docker:24-dind.tar" ]; then
     echo "Loading docker:24-dind base image..."
-    docker load -i "$ROOT_DIR/docker:24-dind.tar" || true
+    BASE_IMAGE_ID=$(docker load -i "$ROOT_DIR/docker:24-dind.tar" | grep "Loaded image ID" | awk '{print $NF}')
+    if [ -n "$BASE_IMAGE_ID" ]; then
+      echo "  - Loaded image ID: $BASE_IMAGE_ID"
+      docker tag "$BASE_IMAGE_ID" "docker:24-dind"
+      echo "  - Tagged as docker:24-dind"
+    fi
+  else
+    echo "ERROR: docker:24-dind.tar not found at $ROOT_DIR/docker:24-dind.tar" >&2
+    exit 1
   fi
 
   # Build image
