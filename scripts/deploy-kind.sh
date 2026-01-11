@@ -210,32 +210,32 @@ RUN curl -LO "https://dl.k8s.io/release/v1.28.0/bin/linux/amd64/kubectl" && \
     curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 && \
     chmod 700 get_helm.sh && ./get_helm.sh && rm get_helm.sh
 
-# 创建 kind-config.yaml（使用 echo 逐行写入）
-RUN mkdir -p /etc && \
-    echo 'kind: Cluster' > /etc/kind-config.yaml && \
-    echo 'apiVersion: kind.x-k8s.io/v1alpha4' >> /etc/kind-config.yaml && \
-    echo 'nodes:' >> /etc/kind-config.yaml && \
-    echo '  - role: control-plane' >> /etc/kind-config.yaml && \
-    echo '    extraPortMappings:' >> /etc/kind-config.yaml && \
-    echo '      - containerPort: 30001' >> /etc/kind-config.yaml && \
-    echo '        hostPort: 1230' >> /etc/kind-config.yaml && \
-    echo '      - containerPort: 30002' >> /etc/kind-config.yaml && \
-    echo '        hostPort: 1231' >> /etc/kind-config.yaml && \
-    echo '      - containerPort: 30003' >> /etc/kind-config.yaml && \
-    echo '        hostPort: 1232' >> /etc/kind-config.yaml && \
-    echo '      - containerPort: 30004' >> /etc/kind-config.yaml && \
-    echo '        hostPort: 1233' >> /etc/kind-config.yaml && \
-    echo '      - containerPort: 30000' >> /etc/kind-config.yaml && \
-    echo '        hostPort: 1234' >> /etc/kind-config.yaml && \
-    echo '      - containerPort: 30005' >> /etc/kind-config.yaml && \
-    echo '        hostPort: 1235' >> /etc/kind-config.yaml && \
-    echo '      - containerPort: 30006' >> /etc/kind-config.yaml && \
-    echo '        hostPort: 1236' >> /etc/kind-config.yaml && \
-    echo '      - containerPort: 30007' >> /etc/kind-config.yaml && \
-    echo '        hostPort: 1237' >> /etc/kind-config.yaml && \
-    echo '  - role: worker' >> /etc/kind-config.yaml && \
-    echo '  - role: worker' >> /etc/kind-config.yaml && \
-    cat /etc/kind-config.yaml
+# 创建 kind-config.yaml（使用 cat 和 heredoc）
+RUN mkdir -p /etc && cat > /etc/kind-config.yaml << 'EOF'
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 30001
+        hostPort: 1230
+      - containerPort: 30002
+        hostPort: 1231
+      - containerPort: 30003
+        hostPort: 1232
+      - containerPort: 30004
+        hostPort: 1233
+      - containerPort: 30000
+        hostPort: 1234
+      - containerPort: 30005
+        hostPort: 1235
+      - containerPort: 30006
+        hostPort: 1236
+      - containerPort: 30007
+        hostPort: 1237
+  - role: worker
+  - role: worker
+EOF
 
 # 复制本地项目文件（包括所有 scenarios, scripts 等）
 COPY . /opt/kubernetes-goat/
@@ -472,19 +472,28 @@ ENTRY
     # 检查容器是否存在（运行中或已停止）
     if docker ps -a --format '{{.Names}}' | grep -q '^kind-k8s-goat$'; then
       echo "容器 kind-k8s-goat 已存在，删除旧容器..."
-      docker rm -f kind-k8s-goat
+      docker rm -f kind-k8s-goat || true
+      # 等待容器完全删除
+      sleep 2
     fi
     
     echo "Running container kind-k8s-goat..."
-    docker run --privileged -d --name kind-k8s-goat \
+    if docker run --privileged -d --name kind-k8s-goat \
       --memory="4g" --cpus="4" \
       -p 1230:1230 -p 1231:1231 -p 1232:1232 -p 1233:1233 \
       -p 1234:1234 -p 1235:1235 -p 1236:1236 -p 1237:1237 \
-      "$IMAGE_TAG"
-
-    echo "Tailing logs from kind-k8s-goat..."
-    docker logs -f kind-k8s-goat
-    exit 0
+      "$IMAGE_TAG"; then
+      
+      # 等待容器启动
+      sleep 2
+      
+      echo "Tailing logs from kind-k8s-goat..."
+      docker logs -f kind-k8s-goat
+      exit 0
+    else
+      echo "ERROR: Failed to run container" >&2
+      exit 1
+    fi
   fi
 }
 
