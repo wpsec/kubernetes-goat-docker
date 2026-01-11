@@ -265,6 +265,24 @@ DOCKERF
 #!/bin/bash
 set -e
 
+# 计时功能
+SCRIPT_START_TIME=$(date +%s)
+
+format_duration() {
+  local seconds=$1
+  local hours=$((seconds / 3600))
+  local minutes=$(((seconds % 3600) / 60))
+  local secs=$((seconds % 60))
+  
+  if [ $hours -gt 0 ]; then
+    printf "%d 小时 %d 分钟 %d 秒" $hours $minutes $secs
+  elif [ $minutes -gt 0 ]; then
+    printf "%d 分钟 %d 秒" $minutes $secs
+  else
+    printf "%d 秒" $secs
+  fi
+}
+
 echo "======================================================"
 echo "      摸鱼信安 + 灵镜联合发布 - K8s 安全实验环境 (V3.0)"
 echo "      欢迎关注：微信公众号：摸鱼信安 + Sec铁匠铺"
@@ -302,10 +320,22 @@ if [ -f "/opt/k8s_goat_images_offline.tar.gz" ]; then
   echo "  - 解压离线镜像包..."
   zcat /opt/k8s_goat_images_offline.tar.gz | docker load
   
-  echo "  - 删除不需要的 Falco 镜像..."
+  echo "  - 删除不需要的安全工具镜像（Kind 不支持）..."
+  # 删除 Falco 镜像
   docker rmi falcosecurity/falco:0.42.1 2>/dev/null || true
   docker rmi falcosecurity/falco-driver-loader:0.42.1 2>/dev/null || true
   docker rmi falcosecurity/falcoctl:0.11.4 2>/dev/null || true
+  # 删除 Kyverno 镜像
+  docker rmi reg.kyverno.io/kyverno/kyverno:v1.16.2 2>/dev/null || true
+  docker rmi reg.kyverno.io/kyverno/background-controller:v1.16.2 2>/dev/null || true
+  docker rmi reg.kyverno.io/kyverno/cleanup-controller:v1.16.2 2>/dev/null || true
+  docker rmi reg.kyverno.io/kyverno/reports-controller:v1.16.2 2>/dev/null || true
+  docker rmi reg.kyverno.io/kyverno/kyverno-cli:v1.16.2 2>/dev/null || true
+  docker rmi reg.kyverno.io/kyverno/kyvernopre:v1.16.2 2>/dev/null || true
+  # 删除 Tetragon 镜像
+  docker rmi quay.io/cilium/tetragon:v1.6.0 2>/dev/null || true
+  docker rmi quay.io/cilium/tetragon-operator:v1.6.0 2>/dev/null || true
+  docker rmi quay.io/cilium/hubble-export-stdout:v1.1.0 2>/dev/null || true
   
   echo "  - 等待 Docker 完全就绪..."
   sleep 3
@@ -415,14 +445,9 @@ do
 done
 
 echo "部署安全监控和策略工具..."
-# Falco 跳过（在 Kind 环境中因为内核驱动限制无法运行）
 echo "  - skip sesource/falco.yaml (不支持 Kind 环境 - 需要内核驱动)"
-
-echo "  - kubectl apply sesource/kyverno.yaml"
-kubectl apply -f sesource/kyverno.yaml || true
-
-echo "  - kubectl apply sesource/tetragon.yaml"
-kubectl apply -f sesource/tetragon.yaml || true
+echo "  - skip sesource/kyverno.yaml (CRD 版本不兼容)"
+echo "  - skip sesource/tetragon.yaml (暂不部署)"
 
 echo "等待 Pod 就绪..."
 kubectl wait --for=condition=Ready pod --all --all-namespaces --timeout=300s || true
@@ -462,8 +487,7 @@ show_welcome_banner() {
   echo "  kubectl exec -it <pod-name> bash       # 进入 Pod 容器"
   echo ""
   echo "注意："
-  echo "  - Falco 在 Kind 环境中可能无法正常运行（需要特殊内核驱动支持）"
-  echo "  - Kyverno 和 Tetragon 已部署用于安全策略管理"
+  echo "  - Falco、Kyverno、Tetragon 未在 Kind 环境部署"
   echo ""
 }
 
@@ -503,23 +527,43 @@ echo "  /usr/local/bin/show-welcome            # 手动显示欢迎信息"
 echo "  docker exec -it <容器ID> /bin/bash -l  # 以登录 shell 进入（显示欢迎）"
 echo ""
 echo "注意："
-echo "  - Falco 在 Kind 环境中可能无法正常运行（需要特殊内核驱动支持）"
-echo "  - Kyverno 和 Tetragon 已部署用于安全策略管理"
+echo "  - Falco、Kyverno、Tetragon 未在 Kind 环境部署"
 echo ""
 WELCOME
 chmod +x /usr/local/bin/show-welcome
 
 # 设置 bash 配置文件以支持登录 shell 和非登录 shell 显示欢迎信息
 cat > /root/.bashrc <<'BASHRC'
-# 欢迎信息（仅显示一次，兼容登录和非登录 shell）
-if [ -z "$WELCOME_SHOWN" ] && [ -t 0 ]; then
+# 欢迎信息（仅显示一次）
+if [ -z "$WELCOME_SHOWN" ]; then
   /usr/local/bin/show-welcome
   export WELCOME_SHOWN=1
 fi
+
+# 保留命令历史
+HISTFILE=~/.bash_history
+HISTSIZE=1000
+HISTFILESIZE=1000
 BASHRC
 
-echo "保持容器运行中..."
-tail -f /dev/null
+# 设置 .bash_profile 以支持登录 shell 显示欢迎信息
+cat > /root/.bash_profile <<'BASHPROF'
+[ -f /root/.bashrc ] && source /root/.bashrc
+BASHPROF
+
+# 显示部署总耗时（之后会进入交互 bash）
+ENTRY_END_TIME=$(date +%s)
+ENTRY_TOTAL_TIME=$((ENTRY_END_TIME - SCRIPT_START_TIME))
+ENTRY_DURATION=$(format_duration $ENTRY_TOTAL_TIME)
+echo ""
+echo "=========================================="
+echo "⏱️  部署总耗时：$ENTRY_DURATION"
+echo "=========================================="
+echo ""
+
+# 启动交互式 bash
+echo "启动 Kubernetes Goat 环境..."
+exec bash -i
 ENTRY
     chmod +x "$ROOT_DIR/entrypoint.sh"
     echo "  ✓ wrote entrypoint.sh"
@@ -652,10 +696,22 @@ if [ -f "$OFFLINE_IMAGES_FILE" ]; then
   echo "  - loading $OFFLINE_IMAGES_FILE into docker"
   zcat "$OFFLINE_IMAGES_FILE" | docker load
 
-  echo "  - 删除不需要的 Falco 镜像..."
+  echo "  - 删除不需要的安全工具镜像（Kind 不支持）..."
+  # 删除 Falco 镜像
   docker rmi falcosecurity/falco:0.42.1 2>/dev/null || true
   docker rmi falcosecurity/falco-driver-loader:0.42.1 2>/dev/null || true
   docker rmi falcosecurity/falcoctl:0.11.4 2>/dev/null || true
+  # 删除 Kyverno 镜像
+  docker rmi reg.kyverno.io/kyverno/kyverno:v1.16.2 2>/dev/null || true
+  docker rmi reg.kyverno.io/kyverno/background-controller:v1.16.2 2>/dev/null || true
+  docker rmi reg.kyverno.io/kyverno/cleanup-controller:v1.16.2 2>/dev/null || true
+  docker rmi reg.kyverno.io/kyverno/reports-controller:v1.16.2 2>/dev/null || true
+  docker rmi reg.kyverno.io/kyverno/kyverno-cli:v1.16.2 2>/dev/null || true
+  docker rmi reg.kyverno.io/kyverno/kyvernopre:v1.16.2 2>/dev/null || true
+  # 删除 Tetragon 镜像
+  docker rmi quay.io/cilium/tetragon:v1.6.0 2>/dev/null || true
+  docker rmi quay.io/cilium/tetragon-operator:v1.6.0 2>/dev/null || true
+  docker rmi quay.io/cilium/hubble-export-stdout:v1.1.0 2>/dev/null || true
 
   echo "  - distributing images to kind nodes (仅加载到 control-plane，worker 自动拉取)"
   # 优化：只加载关键镜像到节点，减少磁盘占用
@@ -747,21 +803,10 @@ do
   fi
 done
 
-echo "10) 部署安全监控和策略工具"
-# Falco 跳过（在 Kind 环境中因为内核驱动限制无法运行）
+echo "10) 跳过安全监控工具部署（Kind 环境不支持）"
 echo "  - skip sesource/falco.yaml (不支持 Kind 环境 - 需要内核驱动)"
-
-for manifest in \
-  "sesource/kyverno.yaml" \
-  "sesource/tetragon.yaml"
-do
-  if [ -f "$manifest" ]; then
-    echo "  - kubectl apply $manifest (安全工具)"
-    kubectl apply -f "$manifest" || true
-  else
-    echo "  - skip $manifest (not found)"
-  fi
-done
+echo "  - skip sesource/kyverno.yaml (CRD 版本不兼容)"
+echo "  - skip sesource/tetragon.yaml (暂不需要)"
 
 echo "11) 等待 Pod 就绪"
 kubectl wait --for=condition=Ready pod --all --all-namespaces --timeout=300s || true

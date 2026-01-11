@@ -58,16 +58,16 @@ registry.k8s.io/kubectl:v1.32.7
     labelloc="t";
     fontsize=16;
     fontcolor="#3E2723";
-    
+
     // --- 外部访问层 ---
     User [label="用户浏览器", shape=ellipse, fillcolor="#F3E5F5", style=filled];
-    
+
     // --- 宿主机端口层 ---
     subgraph cluster_host {
         label = "宿主机or虚拟机or灵境 Docker 端口映射 (Host Ports)";
         style = dashed;
         color = "#FFA000";
-    
+
         P1230 [label="Port: 1230\nbuild-code", fillcolor="#FFF9C4"];
         P1231 [label="Port: 1231\nhealth-check", fillcolor="#FFF9C4"];
         P1232 [label="Port: 1232\ninternal-proxy", fillcolor="#FFF9C4"];
@@ -76,13 +76,13 @@ registry.k8s.io/kubectl:v1.32.7
         P1235 [label="Port: 1235\npoor-registry", fillcolor="#FFF9C4"];
         P1236 [label="Port: 1236\nhunger-check", fillcolor="#FFF9C4"];
     }
-    
+
     // --- Kubernetes 内部 NodePort / Pod ---
     subgraph cluster_k8s {
         label = "Kubernetes 集群 4 层负载均衡 - Pod";
         style = filled;
         color = "#E3F2FD";
-    
+
         // NodePorts
         NP30000 [label="NodePort: 30000", fillcolor="#90CAF9", penwidth=2];
         NP30001 [label="NodePort: 30001", fillcolor="#BBDEFB"];
@@ -91,7 +91,7 @@ registry.k8s.io/kubectl:v1.32.7
         NP30004 [label="NodePort: 30004", fillcolor="#BBDEFB"];
         NP30005 [label="NodePort: 30005", fillcolor="#BBDEFB"];
         NP30006 [label="NodePort: 30006", fillcolor="#BBDEFB"];
-    
+
         // Pods
         Pod_Home [label="Pod: kubernetes-goat-home", fillcolor="#A5D6A7", penwidth=2];
         Pod_Build [label="Pod: build-code", fillcolor="#C8E6C9"];
@@ -101,10 +101,10 @@ registry.k8s.io/kubectl:v1.32.7
         Pod_Registry [label="Pod: poor-registry", fillcolor="#C8E6C9"];
         Pod_Hunger [label="Pod: hunger-check", fillcolor="#C8E6C9"];
     }
-    
+
     // --- 外部用户访问路径 ---
     User -> {P1230 P1231 P1232 P1233 P1234 P1235 P1236} [color="#BDBDBD"];
-    
+
     // --- HostPort -> NodePort -> Pod 映射 ---
     P1234 -> NP30000 -> Pod_Home;
     P1230 -> NP30001 -> Pod_Build;
@@ -159,11 +159,9 @@ docker run --privileged -d \
   kind-k8s-goat-moyusec-lingjing:v3.0
 ```
 
-## 基于kubernetes-goat的集群内容（红蓝队+甲乙方视角）学习（后续提供）
+## 基于 kubernetes-goat 的集群内容（红蓝队+甲乙方视角）学习（后续更新）
 
-待更新
-
-
+欢迎大家使用、研究和深入探索本靶场，并以此环境为基础开展 Kubernetes 集群安全 相关的学习、实验与攻防研究。当前，国内绝大多数互联网厂商以及众多中大型企业，已经在生产环境中大规模采用 Kubernetes 等容器集群技术来承载核心业务系统。相较于十年前以 单机部署、单应用部署 为主的传统架构，现代云原生环境在架构复杂度、组件数量、攻击面和安全边界上都发生了质的变化。Kubernetes 集群涉及容器运行时、镜像仓库、网络插件、存储、CI/CD、权限与身份管理等多个关键环节，任何一个环节的配置不当，都可能成为攻击者横向移动和权限提升的入口，掌握集群安全攻防技能对于提升个人技术水平和职业竞争力非常重要。
 
 ## 其它说明
 
