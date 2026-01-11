@@ -211,7 +211,7 @@ RUN curl -LO "https://dl.k8s.io/release/v1.28.0/bin/linux/amd64/kubectl" && \
     chmod 700 get_helm.sh && ./get_helm.sh && rm get_helm.sh
 
 # 创建 kind-config.yaml（使用 cat 和 heredoc）
-RUN mkdir -p /etc && cat > /etc/kind-config.yaml << 'EOF'
+RUN mkdir -p /etc && cat > /etc/kind-config.yaml << 'KINDEOF'
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
@@ -235,7 +235,7 @@ nodes:
         hostPort: 1237
   - role: worker
   - role: worker
-EOF
+KINDEOF
 
 # 复制本地项目文件（包括所有 scenarios, scripts 等）
 COPY . /opt/kubernetes-goat/
