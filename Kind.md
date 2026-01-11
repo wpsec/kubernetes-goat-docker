@@ -90,7 +90,17 @@ docker+kind+kubernetes-goat+docker 容器运行时
 
 ## 访问路径
 
-网络因为方便访问，住了 nodeport 映射到宿主机端口，所以跟官方的端口不太一样
+官方标准：只暴露 7 个端口（1230-1236），对应 7 个需要网络访问的靶场
+
+| 宿主机端口 | 场景                              | 容器内端口 | NodePort |
+| ---------- | --------------------------------- | ---------- | -------- |
+| 1230       | build-code (Sensitive keys)       | 3000       | 30001    |
+| 1231       | health-check (DIND)               | 80         | 30002    |
+| 1232       | internal-proxy (SSRF)             | 3000       | 30003    |
+| 1233       | system-monitor (Container Escape) | 8080       | 30004    |
+| 1234       | kubernetes-goat-home (首页)       | 80         | 30000    |
+| 1235       | poor-registry (Private Registry)  | 5000       | 30005    |
+| 1236       | hunger-check (DoS)                | 8080       | 30006    |
 
 <!-- 这是一张图片，ocr 内容为： -->
 
@@ -99,8 +109,32 @@ docker+kind+kubernetes-goat+docker 容器运行时
 ## 导入镜像
 
 ```bash
-# docker save -o kind-k8s-goat-v3.tar kind-k8s-goat-moyusec-lingjing:v3.0
+# 导出已构建的镜像
+docker save -o kind-k8s-goat-v3.tar kind-k8s-goat-moyusec-lingjing:v3.0
+
+# 或导入镜像
 docker load -i kind-k8s-goat-v3.tar
+```
+
+## 构建镜像（如需重新构建）
+
+```bash
+# 在 /root/DKinD 目录下执行
+cd /root/DKinD
+
+# 确保以下文件/目录存在：
+# - docker:24-dind.tar
+# - kind_node_v1.27.3.tar.gz
+# - k8s_goat_images_offline.tar.gz
+# - kind-config.yaml (会由脚本生成)
+# - Dockerfile
+# - entrypoint.sh
+
+# 方式 1: 使用 deploy-kind.sh 自动构建（推荐）
+bash kubernetes-goat-docker/scripts/deploy-kind.sh
+
+# 方式 2: 手动 docker build（需要 scenarios, scripts, sesource 目录）
+docker build -t kind-k8s-goat-moyusec-lingjing:v3.0 .
 ```
 
 ## 运行集群
@@ -118,7 +152,17 @@ docker run --privileged -d \
   -p 1234:1234 \
   -p 1235:1235 \
   -p 1236:1236 \
-  -p 1237:1237 \
-  -p 1238:1238 \
   kind-k8s-goat-moyusec-lingjing:v3.0
+```
+
+## 查看日志
+
+```bash
+docker logs -f kind-k8s-goat
+```
+
+## 进入容器
+
+```bash
+docker exec -it kind-k8s-goat bash
 ```
