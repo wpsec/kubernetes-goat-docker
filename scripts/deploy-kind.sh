@@ -153,6 +153,7 @@ bootstrap_dind() {
   IMAGE_TAG="kind-k8s-goat-moyusec-lingjing:v3.0"
   
   # Write kind-config.yaml (officially aligned port mappings)
+  # 减少节点数量以节省磁盘空间：1 control-plane + 1 worker = 2 节点
   if [ ! -f "$ROOT_DIR/kind-config.yaml" ]; then
     cat > "$ROOT_DIR/kind-config.yaml" <<'KINDCFG'
 kind: Cluster
@@ -176,7 +177,6 @@ nodes:
         hostPort: 1236
       - containerPort: 30007  # metadata-db
         hostPort: 1237
-  - role: worker
   - role: worker
 
 KINDCFG
@@ -211,7 +211,7 @@ RUN curl -LO "https://dl.k8s.io/release/v1.28.0/bin/linux/amd64/kubectl" && \
     chmod 700 get_helm.sh && ./get_helm.sh && rm get_helm.sh
 
 # 创建 kind-config.yaml（使用 printf 方式，避免 heredoc 问题）
-RUN mkdir -p /etc && printf 'kind: Cluster\napiVersion: kind.x-k8s.io/v1alpha4\nnodes:\n  - role: control-plane\n    extraPortMappings:\n      - containerPort: 30001\n        hostPort: 1230\n      - containerPort: 30002\n        hostPort: 1231\n      - containerPort: 30003\n        hostPort: 1232\n      - containerPort: 30004\n        hostPort: 1233\n      - containerPort: 30000\n        hostPort: 1234\n      - containerPort: 30005\n        hostPort: 1235\n      - containerPort: 30006\n        hostPort: 1236\n      - containerPort: 30007\n        hostPort: 1237\n  - role: worker\n  - role: worker\n' > /etc/kind-config.yaml
+RUN mkdir -p /etc && printf 'kind: Cluster\napiVersion: kind.x-k8s.io/v1alpha4\nnodes:\n  - role: control-plane\n    extraPortMappings:\n      - containerPort: 30001\n        hostPort: 1230\n      - containerPort: 30002\n        hostPort: 1231\n      - containerPort: 30003\n        hostPort: 1232\n      - containerPort: 30004\n        hostPort: 1233\n      - containerPort: 30000\n        hostPort: 1234\n      - containerPort: 30005\n        hostPort: 1235\n      - containerPort: 30006\n        hostPort: 1236\n      - containerPort: 30007\n        hostPort: 1237\n  - role: worker\n' > /etc/kind-config.yaml
 
 # 复制本地项目文件（包括所有 scenarios, scripts 等）
 COPY . /opt/kubernetes-goat/
@@ -275,6 +275,9 @@ else
   echo "  - K8s 集群已存在"
 fi
 
+echo "移除 control-plane 的 taint，允许调度普通 Pod..."
+kubectl taint nodes kind-control-plane node-role.kubernetes.io/control-plane:NoSchedule- 2>/dev/null || true
+
 echo "加载并分发靶场镜像..."
 if [ -f "/opt/k8s_goat_images_offline.tar.gz" ]; then
   echo "  - 解压离线镜像包..."
@@ -283,28 +286,29 @@ if [ -f "/opt/k8s_goat_images_offline.tar.gz" ]; then
   echo "  - 等待 Docker 完全就绪..."
   sleep 3
   
-  echo "  - 获取所有已加载的镜像..."
-  docker images
+  echo "  - 分发关键镜像到 Kind 集群节点..."
+  # 只加载关键镜像到节点，减少磁盘占用
+  CRITICAL_IMAGES=(
+    "madhuakula/k8s-goat-health-check:latest"
+    "madhuakula/k8s-goat-metadata-db:latest"
+    "madhuakula/k8s-goat-internal-api:latest"
+    "madhuakula/k8s-goat-build-code:latest"
+    "madhuakula/k8s-goat-home:latest"
+    "madhuakula/k8s-goat-cache-store:latest"
+    "madhuakula/k8s-goat-batch-check:latest"
+  )
   
-  echo "  - 分发所有镜像到 Kind 集群节点..."
-  # 获取所有镜像，排除 kindest 的基础镜像和 <none> 标记的镜像
-  IMAGES=$(docker images --format "{{.Repository}}:{{.Tag}}" | grep -v "^<none>" | grep -v "kindest/node")
-  
-  if [ -z "$IMAGES" ]; then
-    echo "    ⚠️  警告：没有找到需要加载的镜像！"
-  else
-    echo "    找到 $(echo "$IMAGES" | wc -l) 个镜像，开始加载..."
-    echo "$IMAGES" | while IFS= read -r img; do
-      if [ -n "$img" ]; then
-        echo "    - kind load docker-image: $img"
-        kind load docker-image "$img" 2>&1 | grep -v "^Image ID:" || true
-      fi
-    done
-  fi
+  echo "    找到 ${#CRITICAL_IMAGES[@]} 个关键镜像，开始加载..."
+  for img in "${CRITICAL_IMAGES[@]}"; do
+    if docker image inspect "$img" > /dev/null 2>&1; then
+      echo "    - kind load docker-image: $img"
+      kind load docker-image "$img" 2>&1 | grep -v "^Image ID:" || true
+    fi
+  done
   
   echo "  - 验证镜像加载完成..."
   sleep 2
-  echo "  - 所有镜像加载完毕"
+  echo "  - 关键镜像加载完毕"
 fi
 
 # ===== 以下逻辑复制自 deploy-kind.sh 的主要部分 =====
@@ -408,10 +412,8 @@ echo "=========================================="
 kubectl get pods -A
 echo ""
 
-# 设置欢迎信息到 bash 配置文件
-cat > /root/.bashrc <<'BASHRC'
-# 欢迎信息
-if [ -z "$WELCOME_SHOWN" ]; then
+# 显示欢迎信息
+show_welcome_banner() {
   clear
   echo "======================================================"
   echo "      摸鱼信安 + 灵镜联合发布 - K8s 安全实验环境 (V3.0)"
@@ -441,6 +443,55 @@ if [ -z "$WELCOME_SHOWN" ]; then
   echo "  - Falco 在 Kind 环境中可能无法正常运行（需要特殊内核驱动支持）"
   echo "  - Kyverno 和 Tetragon 已部署用于安全策略管理"
   echo ""
+}
+
+# 显示欢迎信息
+show_welcome_banner
+
+# 创建欢迎信息脚本
+cat > /usr/local/bin/show-welcome <<'WELCOME'
+#!/bin/bash
+clear
+echo "======================================================"
+echo "      摸鱼信安 + 灵镜联合发布 - K8s 安全实验环境 (V3.0)"
+echo "      欢迎关注：微信公众号：摸鱼信安 + Sec铁匠铺"
+echo "======================================================"
+echo ""
+echo "kubectl 集群状态："
+kubectl get nodes 2>/dev/null || true
+echo ""
+echo "可用靶场服务（通过 NodePort 访问）："
+echo "  - Build Code: http://localhost:1230 (NodePort: 30001)"
+echo "  - Health Check: http://localhost:1231 (NodePort: 30002)"
+echo "  - Internal Proxy: http://localhost:1232 (NodePort: 30003)"
+echo "  - System Monitor: http://localhost:1233 (NodePort: 30004)"
+echo "  - Kubernetes Goat Home: http://localhost:1234 (NodePort: 30000)"
+echo "  - Poor Registry: http://localhost:1235 (NodePort: 30005)"
+echo "  - Hunger Check: http://localhost:1236 (NodePort: 30006)"
+echo "  - Metadata DB: http://localhost:1237 (NodePort: 30007)"
+echo ""
+echo "常用命令："
+echo "  kubectl get pods -A                    # 查看所有 Pod 状态"
+echo "  kubectl get svc -A                     # 查看所有服务"
+echo "  kubectl logs -f <pod-name>              # 查看 Pod 日志"
+echo "  kubectl exec -it <pod-name> bash       # 进入 Pod 容器"
+echo ""
+echo "进入 bash 后看不到欢迎信息？使用："
+echo "  /usr/local/bin/show-welcome            # 手动显示欢迎信息"
+echo "  docker exec -it <容器ID> /bin/bash -l  # 以登录 shell 进入（显示欢迎）"
+echo ""
+echo "注意："
+echo "  - Falco 在 Kind 环境中可能无法正常运行（需要特殊内核驱动支持）"
+echo "  - Kyverno 和 Tetragon 已部署用于安全策略管理"
+echo ""
+WELCOME
+chmod +x /usr/local/bin/show-welcome
+
+# 设置 bash 配置文件以支持登录 shell 和非登录 shell 显示欢迎信息
+cat > /root/.bashrc <<'BASHRC'
+# 欢迎信息（仅显示一次，兼容登录和非登录 shell）
+if [ -z "$WELCOME_SHOWN" ] && [ -t 0 ]; then
+  /usr/local/bin/show-welcome
   export WELCOME_SHOWN=1
 fi
 BASHRC
@@ -579,18 +630,28 @@ if [ -f "$OFFLINE_IMAGES_FILE" ]; then
   echo "  - loading $OFFLINE_IMAGES_FILE into docker"
   zcat "$OFFLINE_IMAGES_FILE" | docker load
 
-  echo "  - distributing all images to kind nodes"
-  # 加载所有镜像（不仅仅是 k8s-goat 镜像），这样 Falco、Kyverno 等镜像也会被加载
-  mapfile -t imgs < <(docker images --format "{{.Repository}}:{{.Tag}}" | grep -v "^<none>" | grep -v "kindest/node")
-  if [ ${#imgs[@]} -eq 0 ]; then
-    echo "  - warning: no images found to load"
-  else
-    echo "  - found ${#imgs[@]} images, loading to kind cluster..."
-    for img in "${imgs[@]}"; do
-      echo "    - kind loading image: $img"
-      kind load docker-image --name "$CLUSTER_NAME" "$img" || true
-    done
-  fi
+  echo "  - distributing images to kind nodes (仅加载到 control-plane，worker 自动拉取)"
+  # 优化：只加载关键镜像到节点，减少磁盘占用
+  # 关键镜像列表（必须在节点上可用的）
+  CRITICAL_IMAGES=(
+    "madhuakula/k8s-goat-health-check:latest"
+    "madhuakula/k8s-goat-metadata-db:latest"
+    "madhuakula/k8s-goat-internal-api:latest"
+    "madhuakula/k8s-goat-build-code:latest"
+    "madhuakula/k8s-goat-home:latest"
+    "madhuakula/k8s-goat-cache-store:latest"
+    "madhuakula/k8s-goat-batch-check:latest"
+  )
+  
+  echo "  - loading ${#CRITICAL_IMAGES[@]} critical images to control-plane node only..."
+  for img in "${CRITICAL_IMAGES[@]}"; do
+    if docker image inspect "$img" > /dev/null 2>&1; then
+      echo "    - kind load docker-image: $img"
+      kind load docker-image --name "$CLUSTER_NAME" "$img" 2>&1 | grep -v "^Image ID:" || true
+    fi
+  done
+  
+  echo "  - 其他镜像将自动从节点本地 containerd 拉取（如果存在）或从网络拉取"
 else
   echo "  - $OFFLINE_IMAGES_FILE not found, skipping"
 fi
