@@ -2,6 +2,7 @@
 set -euo pipefail
 
 # deploy-kind.sh
+# 统一部署脚本 - 支持三种模式: build (仅构建镜像), run (仅运行容器), all (构建并运行)
 # 自动检测环境 - 如果缺少 kubectl/kind/helm，自动启动 DinD 容器进行离线部署
 # 支持代理: 设置环境变量 HTTP_PROXY/HTTPS_PROXY 或使用 --proxy 参数
 
@@ -18,6 +19,9 @@ HELM_VALUES="./scenarios/metadata-db/values.yaml"
 HTTP_PROXY="${HTTP_PROXY:-}"
 HTTPS_PROXY="${HTTPS_PROXY:-}"
 NO_PROXY="${NO_PROXY:-}"
+
+# 运行模式: build (仅构建镜像), run (仅运行容器), all (构建并运行)
+MODE="all"
 
 # 解析命令行参数
 while [[ $# -gt 0 ]]; do
@@ -39,6 +43,22 @@ while [[ $# -gt 0 ]]; do
       NO_PROXY="$2"
       shift 2
       ;;
+    build)
+      MODE="build"
+      shift
+      ;;
+    run)
+      MODE="run"
+      shift
+      ;;
+    all)
+      MODE="all"
+      shift
+      ;;
+    -h|--help)
+      show_help
+      exit 0
+      ;;
     *)
       echo "Unknown option: $1"
       exit 1
@@ -47,6 +67,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 echo "== K8s-Goat 离线部署脚本 =="
+echo "MODE=$MODE"
 echo "ROOT_DIR=$ROOT_DIR"
 if [ -n "$HTTP_PROXY" ]; then
   echo "HTTP_PROXY=$HTTP_PROXY"
@@ -62,7 +83,13 @@ require_cmd() {
 
 show_help() {
   cat <<EOF
-用法: $0 [选项]
+用法: $0 [命令] [选项]
+
+命令:
+  build                 仅构建 Docker 镜像（不运行容器）
+  run                   仅运行已构建的镜像（假设镜像已存在）
+  all                   构建镜像并运行容器（默认）
+  -h, --help           显示此帮助信息
 
 选项:
   --proxy URL           同时设置 HTTP_PROXY 和 HTTPS_PROXY
@@ -76,16 +103,18 @@ show_help() {
   NO_PROXY             不需要代理的主机列表
 
 示例:
-  # 使用代理参数
+  # 构建镜像并运行（一步完成）
   bash scripts/deploy-kind.sh --proxy http://192.168.246.76:7897
 
-  # 使用环境变量
-  export HTTP_PROXY=http://192.168.246.76:7897
-  export HTTPS_PROXY=http://192.168.246.76:7897
-  bash scripts/deploy-kind.sh
+  # 仅构建镜像（分两步）
+  bash scripts/deploy-kind.sh build --proxy http://192.168.246.76:7897
 
-  # 不使用代理（默认）
-  bash scripts/deploy-kind.sh
+  # 仅运行容器（假设镜像已存在）
+  bash scripts/deploy-kind.sh run
+
+  # 或使用环境变量
+  export HTTP_PROXY=http://192.168.246.76:7897
+  bash scripts/deploy-kind.sh build
 
 EOF
 }
@@ -102,7 +131,15 @@ if ! require_cmd docker; then
   exit 2
 fi
 
-# If kubectl/kind/helm missing, bootstrap DinD
+# 如果只是运行容器，就不需要检查 kubectl/kind/helm
+if [ "$MODE" = "run" ]; then
+  echo "运行模式: 仅运行容器（假设镜像已构建）"
+  # 跳过 DIND bootstrap，直接调用 run-container.sh
+  bash "$ROOT_DIR/scripts/run-container.sh" start
+  exit 0
+fi
+
+# If kubectl/kind/helm missing, bootstrap DinD (对于 build 和 all 模式)
 NEED_DIND=0
 for cmd in kubectl kind helm; do
   if ! require_cmd "$cmd"; then
@@ -173,17 +210,50 @@ RUN curl -LO "https://dl.k8s.io/release/v1.28.0/bin/linux/amd64/kubectl" && \
     curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 && \
     chmod 700 get_helm.sh && ./get_helm.sh && rm get_helm.sh
 
-# 如果有本地代码则复制，否则 git clone
-RUN if [ -d "/tmp/kubernetes-goat/scenarios" ]; then \
-      mkdir -p /opt/kubernetes-goat && \
-      cp -r /tmp/kubernetes-goat/* /opt/kubernetes-goat/; \
-    else \
-      git clone https://github.com/wpsec/kubernetes-goat-docker.git /opt/kubernetes-goat; \
+# 创建 kind-config.yaml
+RUN mkdir -p /etc && cat > /etc/kind-config.yaml <<'KINDCFG'
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 30001  # build-code
+        hostPort: 1230
+      - containerPort: 30002  # health-check
+        hostPort: 1231
+      - containerPort: 30003  # internal-proxy
+        hostPort: 1232
+      - containerPort: 30004  # system-monitor
+        hostPort: 1233
+      - containerPort: 30000  # goat-home
+        hostPort: 1234
+      - containerPort: 30005  # poor-registry
+        hostPort: 1235
+      - containerPort: 30006  # hunger-check
+        hostPort: 1236
+      - containerPort: 30007  # metadata-db
+        hostPort: 1237
+  - role: worker
+  - role: worker
+KINDCFG
+
+# 复制本地项目文件（包括所有 scenarios, scripts 等）
+COPY . /opt/kubernetes-goat/
+
+# 尝试复制可选的离线镜像文件（如果存在）
+RUN if [ -f "/opt/kubernetes-goat/kind_node_v1.27.3.tar.gz" ]; then \
+      mv /opt/kubernetes-goat/kind_node_v1.27.3.tar.gz /opt/; \
+    fi && \
+    if [ -f "/opt/kubernetes-goat/k8s_goat_images_offline.tar.gz" ]; then \
+      mv /opt/kubernetes-goat/k8s_goat_images_offline.tar.gz /opt/; \
     fi
 
-COPY kind_node_v1.27.3.tar.gz /opt/kind_node_v1.27.3.tar.gz
-COPY k8s_goat_images_offline.tar.gz /opt/k8s_goat_images_offline.tar.gz
-COPY kind-config.yaml /etc/kind-config.yaml
+# 如果没有 scenarios 目录，从 github 克隆
+RUN if [ ! -d "/opt/kubernetes-goat/scenarios" ]; then \
+      git clone https://github.com/wpsec/kubernetes-goat-docker.git /tmp/k8s-goat-clone && \
+      cp -r /tmp/k8s-goat-clone/* /opt/kubernetes-goat/ && \
+      rm -rf /tmp/k8s-goat-clone; \
+    fi
 
 RUN echo 'kubectl get nodes' >> /root/.bashrc
 
@@ -207,6 +277,7 @@ echo "======================================================"
 
 echo "正在启动内部 Docker 守护进程..."
 dockerd-entrypoint.sh > /var/log/dockerd.log 2>&1 &
+DOCKER_PID=$!
 until docker info >/dev/null 2>&1; do sleep 2; done
 
 echo "加载 KinD 节点镜像..."
@@ -214,31 +285,122 @@ if [ -f "/opt/kind_node_v1.27.3.tar.gz" ]; then
   zcat /opt/kind_node_v1.27.3.tar.gz | docker load
 fi
 
-echo "No kind clusters found."
 echo "创建 K8s 集群..."
 if ! kind get clusters | grep -q "^kind$"; then
   kind create cluster --config /etc/kind-config.yaml --image kindest/node:v1.27.3 --wait 5m
+else
+  echo "K8s 集群已存在"
 fi
 
 echo "加载并分发靶场镜像..."
 if [ -f "/opt/k8s_goat_images_offline.tar.gz" ]; then
   zcat /opt/k8s_goat_images_offline.tar.gz | docker load
-  for img in $(docker images --format "{{.Repository}}:{{.Tag}}" | grep "k8s-goat"); do
+  for img in $(docker images --format "{{.Repository}}:{{.Tag}}" | grep "k8s-goat" || true); do
     kind load docker-image "$img"
   done
 fi
 
-echo "修复 YAML 中 CRI socket 路径..."
-echo "清理旧的 Metadata DB 和 Internal Proxy..."
+# ===== 以下逻辑复制自 deploy-kind.sh 的主要部分 =====
+
+ROOT_DIR="/opt/kubernetes-goat"
+CLUSTER_NAME="kind"
+OFFLINE_IMAGES_FILE="/opt/k8s_goat_images_offline.tar.gz"
+HELM_VALUES="./scenarios/metadata-db/values.yaml"
+
+sed_inplace() {
+  local pattern=$1; shift
+  local file=$1; shift
+  if sed --version >/dev/null 2>&1; then
+    sed -i "$pattern" "$file"
+  else
+    sed -i '' "$pattern" "$file"
+  fi
+}
+
+cd "$ROOT_DIR"
+
+echo "修复 CRI socket 路径..."
+find ./scenarios -name "*.yaml" -type f -print0 | while IFS= read -r -d '' f; do
+  if grep -qE "/var/run/cri-dockerd.sock|/custom/containerd/containerd.sock" "$f"; then
+    echo "  - update $f: socket path -> /run/containerd/containerd.sock"
+    sed_inplace "s|/var/run/cri-dockerd.sock|/run/containerd/containerd.sock|g" "$f"
+    sed_inplace "s|/custom/containerd/containerd.sock|/run/containerd/containerd.sock|g" "$f"
+  fi
+  if grep -q "docker-sock-volume" "$f"; then
+    sed_inplace "s|docker-sock-volume|containerd-sock-volume|g" "$f"
+  fi
+done
+
+echo "清理旧资源..."
+kubectl delete deployment metadata-db --ignore-not-found || true
+kubectl delete service metadata-db --ignore-not-found || true
+kubectl delete deployment internal-proxy-deployment --ignore-not-found || true
+kubectl delete service internal-proxy-api-service --ignore-not-found || true
+
+echo "卸载遗留 Helm..."
+if helm list -n default 2>/dev/null | awk 'NR>1 {print $1}' | grep -q "^metadata-db$" >/dev/null 2>&1; then
+  helm uninstall metadata-db --namespace default || true
+fi
+
 echo "部署 Metadata DB..."
+if [ -f "$HELM_VALUES" ]; then
+  helm upgrade --install metadata-db ./scenarios/metadata-db \
+    --namespace default -f "$HELM_VALUES" \
+    --set service.type=NodePort --set service.nodePort=30001 \
+    --wait --atomic
+else
+  echo "  - warning: $HELM_VALUES not found, installing with defaults"
+  helm upgrade --install metadata-db ./scenarios/metadata-db \
+    --namespace default \
+    --set service.type=NodePort --set service.nodePort=30001 \
+    --wait --atomic || true
+fi
+
 echo "部署 Internal Proxy..."
+kubectl apply -f scenarios/internal-proxy/deployment.yaml || true
+
 echo "部署其他靶场..."
+for manifest in \
+  "scenarios/insecure-rbac/setup.yaml" \
+  "scenarios/batch-check/job.yaml" \
+  "scenarios/build-code/deployment.yaml" \
+  "scenarios/cache-store/deployment.yaml" \
+  "scenarios/health-check/deployment.yaml" \
+  "scenarios/hunger-check/deployment.yaml" \
+  "scenarios/kubernetes-goat-home/deployment.yaml" \
+  "scenarios/poor-registry/deployment.yaml" \
+  "scenarios/system-monitor/deployment.yaml" \
+  "scenarios/hidden-in-layers/deployment.yaml" \
+  "scenarios/kyverno-namespace-exec-block/deployment.yaml"
+do
+  if [ -f "$manifest" ]; then
+    echo "  - kubectl apply $manifest"
+    kubectl apply -f "$manifest" || true
+  fi
+done
+
+echo "部署安全监控和策略工具..."
+for manifest in \
+  "sesource/falco.yaml" \
+  "sesource/kyverno.yaml" \
+  "sesource/tetragon.yaml"
+do
+  if [ -f "$manifest" ]; then
+    echo "  - kubectl apply $manifest"
+    kubectl apply -f "$manifest" || true
+  fi
+done
+
 echo "等待 Pod 就绪..."
+kubectl wait --for=condition=Ready pod --all --all-namespaces --timeout=300s || true
 
-# Run full deployment script
-cd /opt/kubernetes-goat
-bash /opt/kubernetes-goat/scripts/deploy-kind.sh
-
+echo ""
+echo "=========================================="
+echo "✅ 环境部署完成"
+echo "=========================================="
+kubectl get pods -A
+echo ""
+echo "保持容器运行中..."
 tail -f /dev/null
 ENTRY
     chmod +x "$ROOT_DIR/entrypoint.sh"
@@ -269,22 +431,50 @@ ENTRY
     fi
   fi
   
+  echo "  - Building from directory: $ROOT_DIR"
+  echo "  - Build arguments: $BUILD_ARGS"
+  
   # shellcheck disable=SC2086
-  docker build --no-cache $BUILD_ARGS -t "$IMAGE_TAG" "$ROOT_DIR"
-
-  # Run container
-  if ! docker ps --format '{{.Names}}' | grep -q '^kind-k8s-goat$'; then
-    echo "Running container kind-k8s-goat..."
-    docker run --privileged -d --name kind-k8s-goat \
-      --memory="4g" --cpus="4" \
-      -p 1230:1230 -p 1231:1231 -p 1232:1232 -p 1233:1233 \
-      -p 1234:1234 -p 1235:1235 -p 1236:1236 \
-      "$IMAGE_TAG"
+  docker build --no-cache $BUILD_ARGS -t "$IMAGE_TAG" -f "$ROOT_DIR/Dockerfile" "$ROOT_DIR"
+  
+  if [ $? -ne 0 ]; then
+    echo "ERROR: Docker build failed" >&2
+    exit 1
   fi
 
-  echo "Tailing logs from kind-k8s-goat..."
-  docker logs -f kind-k8s-goat
-  exit 0
+  echo ""
+  echo "=========================================="
+  echo "✅ 镜像构建成功!"
+  echo "=========================================="
+  echo ""
+  
+  # 根据 MODE 决定是否启动容器
+  if [ "$MODE" = "build" ]; then
+    echo "模式: build - 仅构建镜像，不启动容器"
+    echo ""
+    echo "后续使用以下命令运行容器:"
+    echo "  bash scripts/run-container.sh start"
+    echo "或"
+    echo "  bash scripts/deploy-kind.sh run"
+    exit 0
+  elif [ "$MODE" = "all" ]; then
+    echo "模式: all - 即将启动容器..."
+    echo ""
+    
+    # Run container
+    if ! docker ps --format '{{.Names}}' | grep -q '^kind-k8s-goat$'; then
+      echo "Running container kind-k8s-goat..."
+      docker run --privileged -d --name kind-k8s-goat \
+        --memory="4g" --cpus="4" \
+        -p 1230:1230 -p 1231:1231 -p 1232:1232 -p 1233:1233 \
+        -p 1234:1234 -p 1235:1235 -p 1236:1236 -p 1237:1237 \
+        "$IMAGE_TAG"
+    fi
+
+    echo "Tailing logs from kind-k8s-goat..."
+    docker logs -f kind-k8s-goat
+    exit 0
+  fi
 }
 
 if [ $NEED_DIND -eq 1 ]; then
