@@ -320,22 +320,27 @@ if [ -f "/opt/k8s_goat_images_offline.tar.gz" ]; then
   echo "  - 解压离线镜像包..."
   zcat /opt/k8s_goat_images_offline.tar.gz | docker load
   
-  echo "  - 删除不需要的安全工具镜像（Kind 不支持）..."
-  # 删除 Falco 镜像
+  echo "  - 删除不需要的镜像以节省磁盘空间..."
+  # 删除 Falco 镜像（3 个）
   docker rmi falcosecurity/falco:0.42.1 2>/dev/null || true
   docker rmi falcosecurity/falco-driver-loader:0.42.1 2>/dev/null || true
   docker rmi falcosecurity/falcoctl:0.11.4 2>/dev/null || true
-  # 删除 Kyverno 镜像
+  # 删除 Kyverno 镜像（6 个）
   docker rmi reg.kyverno.io/kyverno/kyverno:v1.16.2 2>/dev/null || true
   docker rmi reg.kyverno.io/kyverno/background-controller:v1.16.2 2>/dev/null || true
   docker rmi reg.kyverno.io/kyverno/cleanup-controller:v1.16.2 2>/dev/null || true
   docker rmi reg.kyverno.io/kyverno/reports-controller:v1.16.2 2>/dev/null || true
   docker rmi reg.kyverno.io/kyverno/kyverno-cli:v1.16.2 2>/dev/null || true
   docker rmi reg.kyverno.io/kyverno/kyvernopre:v1.16.2 2>/dev/null || true
-  # 删除 Tetragon 镜像
+  # 删除 Tetragon 镜像（3 个）
   docker rmi quay.io/cilium/tetragon:v1.6.0 2>/dev/null || true
   docker rmi quay.io/cilium/tetragon-operator:v1.6.0 2>/dev/null || true
   docker rmi quay.io/cilium/hubble-export-stdout:v1.1.0 2>/dev/null || true
+  # 删除其他不需要的通用镜像
+  docker rmi nginx:latest 2>/dev/null || true
+  docker rmi alpine:latest 2>/dev/null || true
+  docker rmi curlimages/curl:8.10.1 2>/dev/null || true
+  docker rmi registry.k8s.io/kubectl:v1.32.7 2>/dev/null || true
   
   echo "  - 等待 Docker 完全就绪..."
   sleep 3
@@ -411,13 +416,13 @@ echo "部署 Metadata DB..."
 if [ -f "$HELM_VALUES" ]; then
   helm upgrade --install metadata-db ./scenarios/metadata-db \
     --namespace default -f "$HELM_VALUES" \
-    --set service.type=NodePort --set service.nodePort=30001 \
+    --set service.type=NodePort --set service.nodePort=30007 \
     --wait --atomic
 else
   echo "  - warning: $HELM_VALUES not found, installing with defaults"
   helm upgrade --install metadata-db ./scenarios/metadata-db \
     --namespace default \
-    --set service.type=NodePort --set service.nodePort=30001 \
+    --set service.type=NodePort --set service.nodePort=30007 \
     --wait --atomic || true
 fi
 
@@ -696,22 +701,27 @@ if [ -f "$OFFLINE_IMAGES_FILE" ]; then
   echo "  - loading $OFFLINE_IMAGES_FILE into docker"
   zcat "$OFFLINE_IMAGES_FILE" | docker load
 
-  echo "  - 删除不需要的安全工具镜像（Kind 不支持）..."
-  # 删除 Falco 镜像
+  echo "  - 删除不需要的镜像以节省磁盘空间..."
+  # 删除 Falco 镜像（3 个）
   docker rmi falcosecurity/falco:0.42.1 2>/dev/null || true
   docker rmi falcosecurity/falco-driver-loader:0.42.1 2>/dev/null || true
   docker rmi falcosecurity/falcoctl:0.11.4 2>/dev/null || true
-  # 删除 Kyverno 镜像
+  # 删除 Kyverno 镜像（6 个）
   docker rmi reg.kyverno.io/kyverno/kyverno:v1.16.2 2>/dev/null || true
   docker rmi reg.kyverno.io/kyverno/background-controller:v1.16.2 2>/dev/null || true
   docker rmi reg.kyverno.io/kyverno/cleanup-controller:v1.16.2 2>/dev/null || true
   docker rmi reg.kyverno.io/kyverno/reports-controller:v1.16.2 2>/dev/null || true
   docker rmi reg.kyverno.io/kyverno/kyverno-cli:v1.16.2 2>/dev/null || true
   docker rmi reg.kyverno.io/kyverno/kyvernopre:v1.16.2 2>/dev/null || true
-  # 删除 Tetragon 镜像
+  # 删除 Tetragon 镜像（3 个）
   docker rmi quay.io/cilium/tetragon:v1.6.0 2>/dev/null || true
   docker rmi quay.io/cilium/tetragon-operator:v1.6.0 2>/dev/null || true
   docker rmi quay.io/cilium/hubble-export-stdout:v1.1.0 2>/dev/null || true
+  # 删除其他不需要的通用镜像
+  docker rmi nginx:latest 2>/dev/null || true
+  docker rmi alpine:latest 2>/dev/null || true
+  docker rmi curlimages/curl:8.10.1 2>/dev/null || true
+  docker rmi registry.k8s.io/kubectl:v1.32.7 2>/dev/null || true
 
   echo "  - distributing images to kind nodes (仅加载到 control-plane，worker 自动拉取)"
   # 优化：只加载关键镜像到节点，减少磁盘占用
@@ -764,17 +774,17 @@ if helm list -n default | awk 'NR>1 {print $1}' | grep -q "^metadata-db$" >/dev/
   helm uninstall metadata-db --namespace default || true
 fi
 
-echo "7) 部署 Metadata DB"
+echo "7) 部署 Metadata DB..."
 if [ -f "$HELM_VALUES" ]; then
   helm upgrade --install metadata-db ./scenarios/metadata-db \
     --namespace default -f "$HELM_VALUES" \
-    --set service.type=NodePort --set service.nodePort=30001 \
+    --set service.type=NodePort --set service.nodePort=30007 \
     --wait --atomic
 else
   echo "  - warning: $HELM_VALUES not found, installing with defaults"
   helm upgrade --install metadata-db ./scenarios/metadata-db \
     --namespace default \
-    --set service.type=NodePort --set service.nodePort=30001 \
+    --set service.type=NodePort --set service.nodePort=30007 \
     --wait --atomic
 fi
 

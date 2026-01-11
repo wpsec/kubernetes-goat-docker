@@ -6,6 +6,10 @@ docker+kind+kubernetes-goat+containerd 容器运行时
 不是
 docker+kind+kubernetes-goat+docker 容器运行时
 
+为了方便大家使用，全部改造为了nodeport 四层负载均衡暴露端口，跟官方的不太一样，但是不影响访问
+
+且这套环境因为kind的原因，不支持或不完全支持：Falco、Kyverno、Tetragon
+
 <!-- 这是一张图片，ocr 内容为： -->
 
 ![](https://cdn.nlark.com/yuque/0/2026/png/27875807/1767978448644-57f76dd4-ec83-4c53-947b-e94e82744a6f.png)
@@ -58,16 +62,16 @@ registry.k8s.io/kubectl:v1.32.7
     labelloc="t";
     fontsize=16;
     fontcolor="#3E2723";
-
+    
     // --- 外部访问层 ---
     User [label="用户浏览器", shape=ellipse, fillcolor="#F3E5F5", style=filled];
-
+    
     // --- 宿主机端口层 ---
     subgraph cluster_host {
         label = "宿主机or虚拟机or灵境 Docker 端口映射 (Host Ports)";
         style = dashed;
         color = "#FFA000";
-
+    
         P1230 [label="Port: 1230\nbuild-code", fillcolor="#FFF9C4"];
         P1231 [label="Port: 1231\nhealth-check", fillcolor="#FFF9C4"];
         P1232 [label="Port: 1232\ninternal-proxy", fillcolor="#FFF9C4"];
@@ -76,13 +80,13 @@ registry.k8s.io/kubectl:v1.32.7
         P1235 [label="Port: 1235\npoor-registry", fillcolor="#FFF9C4"];
         P1236 [label="Port: 1236\nhunger-check", fillcolor="#FFF9C4"];
     }
-
+    
     // --- Kubernetes 内部 NodePort / Pod ---
     subgraph cluster_k8s {
         label = "Kubernetes 集群 4 层负载均衡 - Pod";
         style = filled;
         color = "#E3F2FD";
-
+    
         // NodePorts
         NP30000 [label="NodePort: 30000", fillcolor="#90CAF9", penwidth=2];
         NP30001 [label="NodePort: 30001", fillcolor="#BBDEFB"];
@@ -91,7 +95,7 @@ registry.k8s.io/kubectl:v1.32.7
         NP30004 [label="NodePort: 30004", fillcolor="#BBDEFB"];
         NP30005 [label="NodePort: 30005", fillcolor="#BBDEFB"];
         NP30006 [label="NodePort: 30006", fillcolor="#BBDEFB"];
-
+    
         // Pods
         Pod_Home [label="Pod: kubernetes-goat-home", fillcolor="#A5D6A7", penwidth=2];
         Pod_Build [label="Pod: build-code", fillcolor="#C8E6C9"];
@@ -101,10 +105,10 @@ registry.k8s.io/kubectl:v1.32.7
         Pod_Registry [label="Pod: poor-registry", fillcolor="#C8E6C9"];
         Pod_Hunger [label="Pod: hunger-check", fillcolor="#C8E6C9"];
     }
-
+    
     // --- 外部用户访问路径 ---
     User -> {P1230 P1231 P1232 P1233 P1234 P1235 P1236} [color="#BDBDBD"];
-
+    
     // --- HostPort -> NodePort -> Pod 映射 ---
     P1234 -> NP30000 -> Pod_Home;
     P1230 -> NP30001 -> Pod_Build;
@@ -118,7 +122,7 @@ registry.k8s.io/kubectl:v1.32.7
 
 ## 访问路径
 
-官方标准：只暴露 7 个端口（1230-1236），对应 7 个需要网络访问的靶场
+官方基础场景
 
 | 宿主机端口 | 场景                              | 容器内端口 | NodePort |
 | ---------- | --------------------------------- | ---------- | -------- |
@@ -167,6 +171,8 @@ docker run --privileged -d \
 
 ### Falco 在 Kind 环境中无法运行的原因
 
+因为falco不能运行，Kyverno、Tetragon我也就没试了
+
 ## 概述
 
 Falco 是一个强大的云原生运行时安全工具，但在 **Kind（Kubernetes in Docker）** 环境中 **无法正常工作**。
@@ -202,7 +208,7 @@ Falco 内核驱动 / eBPF 探针
 #### Kind 是什么？
 
 ```
-Host OS (macOS / Linux / Windows /灵境)
+Host OS (macOS / Linux / Windows / 灵境)
     ↓
 Docker 守护进程
     ↓
