@@ -10,6 +10,42 @@ docker+kind+kubernetes-goat+docker 容器运行时
 
 ![](https://cdn.nlark.com/yuque/0/2026/png/27875807/1767978448644-57f76dd4-ec83-4c53-947b-e94e82744a6f.png)
 
+更新镜像
+
+```bash
+aquasec/kube-bench:latest
+madhuakula/hacker-container:latest                                                           b5ea0fd114fb       1.68GB          444MB
+madhuakula/k8s-goat-batch-check:latest                                                       8642ce33d356        247MB         90.7MB
+madhuakula/k8s-goat-build-code:latest                                                        0636439aab95        248MB         88.9MB
+madhuakula/k8s-goat-cache-store:latest                                                       4b00de713d8d       41.1MB         11.3MB
+madhuakula/k8s-goat-health-check:latest                                                      19561147b9ef       1.63GB          449MB
+madhuakula/k8s-goat-hidden-in-layers:latest                                                  77419a519bc8       11.1MB         3.41MB
+madhuakula/k8s-goat-home:latest                                                              0fe58ea33370       20.7MB         6.62MB
+madhuakula/k8s-goat-hunger-check:latest                                                      d0bac8391a0a        266MB         80.5MB
+madhuakula/k8s-goat-info-app:latest                                                          31eaaecaff18        100MB         24.4MB
+madhuakula/k8s-goat-internal-api:latest                                                      afcafd473273        231MB         58.8MB
+madhuakula/k8s-goat-metadata-db:latest                                                       ef7031853252        493MB          123MB
+madhuakula/k8s-goat-poor-registry:latest                                                     fc084e703a55        143MB         63.4MB
+madhuakula/k8s-goat-system-monitor:latest
+madhuakula/k8s-goat-helm-tiller:latest
+docker.io/falcosecurity/falco:0.42.1
+docker.io/falcosecurity/falco-driver-loader:0.42.1
+docker.io/falcosecurity/falcoctl:0.11.4
+nginx:latest
+alpine:latest
+quay.io/cilium/tetragon:v1.6.0
+quay.io/cilium/hubble-export-stdout:v1.1.0
+quay.io/cilium/tetragon-operator:v1.6.0
+reg.kyverno.io/kyverno/kyverno:v1.16.2
+reg.kyverno.io/kyverno/background-controller:v1.16.2
+reg.kyverno.io/kyverno/cleanup-controller:v1.16.2
+reg.kyverno.io/kyverno/reports-controller:v1.16.2
+reg.kyverno.io/kyverno/kyverno-cli:v1.16.2
+reg.kyverno.io/kyverno/kyvernopre:v1.16.2
+curlimages/curl:8.10.1
+registry.k8s.io/kubectl:v1.32.7
+```
+
 <!-- 这是一个文本绘图，源码为：digraph K8sGoatV3_Fixed {
     rankdir=LR;
     node [shape=box, style="filled, rounded", fontname="Arial", fontsize=12];
@@ -32,15 +68,13 @@ docker+kind+kubernetes-goat+docker 容器运行时
         style = dashed;
         color = "#FFA000";
 
-        P1230 [label="Port: 1230", fillcolor="#FFF9C4"];
-        P1231 [label="Port: 1231", fillcolor="#FFF9C4"];
-        P1232 [label="Port: 1232", fillcolor="#FFF9C4"];
-        P1233 [label="Port: 1233", fillcolor="#FFF9C4"];
+        P1230 [label="Port: 1230\nbuild-code", fillcolor="#FFF9C4"];
+        P1231 [label="Port: 1231\nhealth-check", fillcolor="#FFF9C4"];
+        P1232 [label="Port: 1232\ninternal-proxy", fillcolor="#FFF9C4"];
+        P1233 [label="Port: 1233\nsystem-monitor", fillcolor="#FFF9C4"];
         P1234 [label="Port: 1234 (首页)", fillcolor="#FFECB3", fontcolor="#E65100", penwidth=2];
-        P1235 [label="Port: 1235", fillcolor="#FFF9C4"];
-        P1236 [label="Port: 1236", fillcolor="#FFF9C4"];
-        P1237 [label="Port: 1237", fillcolor="#FFF9C4"];
-        P1238 [label="Port: 1238", fillcolor="#FFF9C4"];
+        P1235 [label="Port: 1235\npoor-registry", fillcolor="#FFF9C4"];
+        P1236 [label="Port: 1236\nhunger-check", fillcolor="#FFF9C4"];
     }
 
     // --- Kubernetes 内部 NodePort / Pod ---
@@ -57,34 +91,28 @@ docker+kind+kubernetes-goat+docker 容器运行时
         NP30004 [label="NodePort: 30004", fillcolor="#BBDEFB"];
         NP30005 [label="NodePort: 30005", fillcolor="#BBDEFB"];
         NP30006 [label="NodePort: 30006", fillcolor="#BBDEFB"];
-        NP30007 [label="NodePort: 30007", fillcolor="#BBDEFB"];
-        NP30008 [label="NodePort: 30008", fillcolor="#BBDEFB"];
 
         // Pods
         Pod_Home [label="Pod: kubernetes-goat-home", fillcolor="#A5D6A7", penwidth=2];
-        Pod_Meta [label="Pod: metadata-db", fillcolor="#C8E6C9"];
-        Pod_Health [label="Pod: health-check\n(DIND 逃逸)", fillcolor="#FFAB91", fontcolor="#BF360C"];
         Pod_Build [label="Pod: build-code", fillcolor="#C8E6C9"];
-        Pod_Poor [label="Pod: poor-registry", fillcolor="#C8E6C9"];
-        Pod_Hunger [label="Pod: hunger-check", fillcolor="#C8E6C9"];
-        Pod_ProxyAPI [label="Pod: internal-proxy API", fillcolor="#C8E6C9"];
-        Pod_ProxyInfo [label="Pod: internal-proxy Info", fillcolor="#C8E6C9"];
+        Pod_Health [label="Pod: health-check\n(DIND 逃逸)", fillcolor="#FFAB91", fontcolor="#BF360C"];
+        Pod_Proxy [label="Pod: internal-proxy", fillcolor="#C8E6C9"];
         Pod_Monitor [label="Pod: system-monitor", fillcolor="#C8E6C9"];
+        Pod_Registry [label="Pod: poor-registry", fillcolor="#C8E6C9"];
+        Pod_Hunger [label="Pod: hunger-check", fillcolor="#C8E6C9"];
     }
 
     // --- 外部用户访问路径 ---
-    User -> {P1230 P1231 P1232 P1233 P1234 P1235 P1236 P1237 P1238} [color="#BDBDBD"];
+    User -> {P1230 P1231 P1232 P1233 P1234 P1235 P1236} [color="#BDBDBD"];
 
     // --- HostPort -> NodePort -> Pod 映射 ---
     P1234 -> NP30000 -> Pod_Home;
-    P1230 -> NP30001 -> Pod_Meta;
+    P1230 -> NP30001 -> Pod_Build;
     P1231 -> NP30002 -> Pod_Health;
-    P1232 -> NP30003 -> Pod_Build;
-    P1238 -> NP30004 -> Pod_Poor;
-    P1235 -> NP30005 -> Pod_Hunger;
-    P1233 -> NP30006 -> Pod_ProxyAPI;
-    P1236 -> NP30007 -> Pod_ProxyInfo;
-    P1237 -> NP30008 -> Pod_Monitor;
+    P1232 -> NP30003 -> Pod_Proxy;
+    P1233 -> NP30004 -> Pod_Monitor;
+    P1235 -> NP30005 -> Pod_Registry;
+    P1236 -> NP30006 -> Pod_Hunger;
 }
  -->
 
@@ -109,32 +137,8 @@ docker+kind+kubernetes-goat+docker 容器运行时
 ## 导入镜像
 
 ```bash
-# 导出已构建的镜像
-docker save -o kind-k8s-goat-v3.tar kind-k8s-goat-moyusec-lingjing:v3.0
-
-# 或导入镜像
+# 导入镜像
 docker load -i kind-k8s-goat-v3.tar
-```
-
-## 构建镜像（如需重新构建）
-
-```bash
-# 在 /root/DKinD 目录下执行
-cd /root/DKinD
-
-# 确保以下文件/目录存在：
-# - docker:24-dind.tar
-# - kind_node_v1.27.3.tar.gz
-# - k8s_goat_images_offline.tar.gz
-# - kind-config.yaml (会由脚本生成)
-# - Dockerfile
-# - entrypoint.sh
-
-# 方式 1: 使用 deploy-kind.sh 自动构建（推荐）
-bash kubernetes-goat-docker/scripts/deploy-kind.sh
-
-# 方式 2: 手动 docker build（需要 scenarios, scripts, sesource 目录）
-docker build -t kind-k8s-goat-moyusec-lingjing:v3.0 .
 ```
 
 ## 运行集群
@@ -153,16 +157,4 @@ docker run --privileged -d \
   -p 1235:1235 \
   -p 1236:1236 \
   kind-k8s-goat-moyusec-lingjing:v3.0
-```
-
-## 查看日志
-
-```bash
-docker logs -f kind-k8s-goat
-```
-
-## 进入容器
-
-```bash
-docker exec -it kind-k8s-goat bash
 ```
