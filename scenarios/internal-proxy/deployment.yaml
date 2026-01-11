@@ -50,9 +50,9 @@ spec:
       protocol: TCP
       port: 3000
       targetPort: 3000
-      nodePort: 30006 # 对应 kind-config containerPort 30006 -> host 1233
+      nodePort: 30003 # SSRF in K8s -> host 1232
     - name: info-port
       protocol: TCP
       port: 5000
       targetPort: 5000
-      nodePort: 30007 # 对应 kind-config containerPort 30007 -> host 1236
+      nodePort: 30006 # info app -> host 1236

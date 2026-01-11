@@ -115,7 +115,7 @@ bootstrap_dind() {
   echo "kubectl/kind/helm not found locally — bootstrapping DinD container..."
   IMAGE_TAG="kind-k8s-goat-moyusec-lingjing:v3.0"
   
-  # Write kind-config.yaml
+  # Write kind-config.yaml (officially aligned port mappings)
   if [ ! -f "$ROOT_DIR/kind-config.yaml" ]; then
     cat > "$ROOT_DIR/kind-config.yaml" <<'KINDCFG'
 kind: Cluster
@@ -124,23 +124,19 @@ nodes:
 - role: control-plane
   extraPortMappings:
   - containerPort: 30000
-    hostPort: 1234
+    hostPort: 1234  # kubernetes-goat-home
   - containerPort: 30001
-    hostPort: 1230
+    hostPort: 1230  # build-code
   - containerPort: 30002
-    hostPort: 1231
+    hostPort: 1231  # health-check
   - containerPort: 30003
-    hostPort: 1232
+    hostPort: 1232  # internal-proxy (SSRF)
   - containerPort: 30004
-    hostPort: 1238
+    hostPort: 1233  # system-monitor
   - containerPort: 30005
-    hostPort: 1235
+    hostPort: 1235  # poor-registry
   - containerPort: 30006
-    hostPort: 1233
-  - containerPort: 30007
-    hostPort: 1236
-  - containerPort: 30008
-    hostPort: 1237
+    hostPort: 1236  # hunger-check
 - role: worker
 - role: worker
 networking:
