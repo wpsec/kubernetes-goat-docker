@@ -321,29 +321,24 @@ if [ -f "/opt/k8s_goat_images_offline.tar.gz" ]; then
   zcat /opt/k8s_goat_images_offline.tar.gz | docker load
   
   echo "  - 删除不需要的镜像以节省磁盘空间..."
-  # 删除 Falco 镜像（3 个）
-  docker rmi falcosecurity/falco:0.42.1 2>/dev/null || true
-  docker rmi falcosecurity/falco-driver-loader:0.42.1 2>/dev/null || true
-  docker rmi falcosecurity/falcoctl:0.11.4 2>/dev/null || true
-  # 删除 Kyverno 镜像（6 个）
-  docker rmi reg.kyverno.io/kyverno/kyverno:v1.16.2 2>/dev/null || true
-  docker rmi reg.kyverno.io/kyverno/background-controller:v1.16.2 2>/dev/null || true
-  docker rmi reg.kyverno.io/kyverno/cleanup-controller:v1.16.2 2>/dev/null || true
-  docker rmi reg.kyverno.io/kyverno/reports-controller:v1.16.2 2>/dev/null || true
-  docker rmi reg.kyverno.io/kyverno/kyverno-cli:v1.16.2 2>/dev/null || true
-  docker rmi reg.kyverno.io/kyverno/kyvernopre:v1.16.2 2>/dev/null || true
-  # 删除 Tetragon 镜像（3 个）
-  docker rmi quay.io/cilium/tetragon:v1.6.0 2>/dev/null || true
-  docker rmi quay.io/cilium/tetragon-operator:v1.6.0 2>/dev/null || true
-  docker rmi quay.io/cilium/hubble-export-stdout:v1.1.0 2>/dev/null || true
-  # 删除其他不需要的通用镜像
-  docker rmi nginx:latest 2>/dev/null || true
-  docker rmi alpine:latest 2>/dev/null || true
-  docker rmi curlimages/curl:8.10.1 2>/dev/null || true
-  docker rmi registry.k8s.io/kubectl:v1.32.7 2>/dev/null || true
-  
-  echo "  - 等待 Docker 完全就绪..."
-  sleep 3
+  # 删除不需要的镜像（并行执行以加快速度）
+  docker rmi falcosecurity/falco:0.42.1 2>/dev/null || true &
+  docker rmi falcosecurity/falco-driver-loader:0.42.1 2>/dev/null || true &
+  docker rmi falcosecurity/falcoctl:0.11.4 2>/dev/null || true &
+  docker rmi reg.kyverno.io/kyverno/kyverno:v1.16.2 2>/dev/null || true &
+  docker rmi reg.kyverno.io/kyverno/background-controller:v1.16.2 2>/dev/null || true &
+  docker rmi reg.kyverno.io/kyverno/cleanup-controller:v1.16.2 2>/dev/null || true &
+  docker rmi reg.kyverno.io/kyverno/reports-controller:v1.16.2 2>/dev/null || true &
+  docker rmi reg.kyverno.io/kyverno/kyverno-cli:v1.16.2 2>/dev/null || true &
+  docker rmi reg.kyverno.io/kyverno/kyvernopre:v1.16.2 2>/dev/null || true &
+  docker rmi quay.io/cilium/tetragon:v1.6.0 2>/dev/null || true &
+  docker rmi quay.io/cilium/tetragon-operator:v1.6.0 2>/dev/null || true &
+  docker rmi quay.io/cilium/hubble-export-stdout:v1.1.0 2>/dev/null || true &
+  docker rmi nginx:latest 2>/dev/null || true &
+  docker rmi alpine:latest 2>/dev/null || true &
+  docker rmi curlimages/curl:8.10.1 2>/dev/null || true &
+  docker rmi registry.k8s.io/kubectl:v1.32.7 2>/dev/null || true &
+  wait  # 等待所有后台任务完成
   
   echo "  - 分发关键镜像到 Kind 集群节点..."
   # 只加载关键镜像到节点，减少磁盘占用
@@ -358,15 +353,22 @@ if [ -f "/opt/k8s_goat_images_offline.tar.gz" ]; then
   )
   
   echo "    找到 ${#CRITICAL_IMAGES[@]} 个关键镜像，开始加载..."
+  # 并行加载镜像以提高速度（最多 4 个并行任务）
+  local parallel_count=0
   for img in "${CRITICAL_IMAGES[@]}"; do
     if docker image inspect "$img" > /dev/null 2>&1; then
       echo "    - kind load docker-image: $img"
-      kind load docker-image "$img" 2>&1 | grep -v "^Image ID:" || true
+      kind load docker-image "$img" 2>&1 | grep -v "^Image ID:" || true &
+      
+      ((parallel_count++))
+      if [ $parallel_count -ge 4 ]; then
+        wait -n  # 等待至少一个后台任务完成，继续启动下一个
+        ((parallel_count--))
+      fi
     fi
   done
+  wait  # 等待所有剩余的后台任务完成
   
-  echo "  - 验证镜像加载完成..."
-  sleep 2
   echo "  - 关键镜像加载完毕"
 fi
 
@@ -455,13 +457,23 @@ echo "  - skip sesource/kyverno.yaml (CRD 版本不兼容)"
 echo "  - skip sesource/tetragon.yaml (暂不部署)"
 
 echo "等待 Pod 就绪..."
-kubectl wait --for=condition=Ready pod --all --all-namespaces --timeout=300s || true
+kubectl wait --for=condition=Ready pod --all --all-namespaces --timeout=120s 2>/dev/null || true
 
 echo ""
 echo "=========================================="
 echo "✅ 环境部署完成"
 echo "=========================================="
 kubectl get pods -A
+echo ""
+
+# 显示部署总耗时（在欢迎信息之前）
+ENTRY_END_TIME=$(date +%s)
+ENTRY_TOTAL_TIME=$((ENTRY_END_TIME - SCRIPT_START_TIME))
+ENTRY_DURATION=$(format_duration $ENTRY_TOTAL_TIME)
+echo ""
+echo "=========================================="
+echo "⏱️  部署总耗时：$ENTRY_DURATION"
+echo "=========================================="
 echo ""
 
 # 显示欢迎信息
@@ -556,19 +568,9 @@ cat > /root/.bash_profile <<'BASHPROF'
 [ -f /root/.bashrc ] && source /root/.bashrc
 BASHPROF
 
-# 显示部署总耗时（之后会进入交互 bash）
-ENTRY_END_TIME=$(date +%s)
-ENTRY_TOTAL_TIME=$((ENTRY_END_TIME - SCRIPT_START_TIME))
-ENTRY_DURATION=$(format_duration $ENTRY_TOTAL_TIME)
-echo ""
-echo "=========================================="
-echo "⏱️  部署总耗时：$ENTRY_DURATION"
-echo "=========================================="
-echo ""
-
-# 启动交互式 bash
-echo "启动 Kubernetes Goat 环境..."
-exec bash -i
+# 保持容器运行（部署已完成，脚本正常退出）
+# 用户可通过 docker exec -it kind-k8s-goat bash 手动进入容器
+sleep infinity
 ENTRY
     chmod +x "$ROOT_DIR/entrypoint.sh"
     echo "  ✓ wrote entrypoint.sh"
@@ -639,7 +641,7 @@ ENTRY
     
     echo "Running container kind-k8s-goat..."
     if docker run --privileged -d --name kind-k8s-goat \
-      --memory="4g" --cpus="4" \
+      --memory="16g" --cpus="12" \
       -p 1230:1230 -p 1231:1231 -p 1232:1232 -p 1233:1233 \
       -p 1234:1234 -p 1235:1235 -p 1236:1236 -p 1237:1237 \
       "$IMAGE_TAG"; then
@@ -702,26 +704,24 @@ if [ -f "$OFFLINE_IMAGES_FILE" ]; then
   zcat "$OFFLINE_IMAGES_FILE" | docker load
 
   echo "  - 删除不需要的镜像以节省磁盘空间..."
-  # 删除 Falco 镜像（3 个）
-  docker rmi falcosecurity/falco:0.42.1 2>/dev/null || true
-  docker rmi falcosecurity/falco-driver-loader:0.42.1 2>/dev/null || true
-  docker rmi falcosecurity/falcoctl:0.11.4 2>/dev/null || true
-  # 删除 Kyverno 镜像（6 个）
-  docker rmi reg.kyverno.io/kyverno/kyverno:v1.16.2 2>/dev/null || true
-  docker rmi reg.kyverno.io/kyverno/background-controller:v1.16.2 2>/dev/null || true
-  docker rmi reg.kyverno.io/kyverno/cleanup-controller:v1.16.2 2>/dev/null || true
-  docker rmi reg.kyverno.io/kyverno/reports-controller:v1.16.2 2>/dev/null || true
-  docker rmi reg.kyverno.io/kyverno/kyverno-cli:v1.16.2 2>/dev/null || true
-  docker rmi reg.kyverno.io/kyverno/kyvernopre:v1.16.2 2>/dev/null || true
-  # 删除 Tetragon 镜像（3 个）
-  docker rmi quay.io/cilium/tetragon:v1.6.0 2>/dev/null || true
-  docker rmi quay.io/cilium/tetragon-operator:v1.6.0 2>/dev/null || true
-  docker rmi quay.io/cilium/hubble-export-stdout:v1.1.0 2>/dev/null || true
-  # 删除其他不需要的通用镜像
-  docker rmi nginx:latest 2>/dev/null || true
-  docker rmi alpine:latest 2>/dev/null || true
-  docker rmi curlimages/curl:8.10.1 2>/dev/null || true
-  docker rmi registry.k8s.io/kubectl:v1.32.7 2>/dev/null || true
+  # 删除不需要的镜像（并行执行以加快速度）
+  docker rmi falcosecurity/falco:0.42.1 2>/dev/null || true &
+  docker rmi falcosecurity/falco-driver-loader:0.42.1 2>/dev/null || true &
+  docker rmi falcosecurity/falcoctl:0.11.4 2>/dev/null || true &
+  docker rmi reg.kyverno.io/kyverno/kyverno:v1.16.2 2>/dev/null || true &
+  docker rmi reg.kyverno.io/kyverno/background-controller:v1.16.2 2>/dev/null || true &
+  docker rmi reg.kyverno.io/kyverno/cleanup-controller:v1.16.2 2>/dev/null || true &
+  docker rmi reg.kyverno.io/kyverno/reports-controller:v1.16.2 2>/dev/null || true &
+  docker rmi reg.kyverno.io/kyverno/kyverno-cli:v1.16.2 2>/dev/null || true &
+  docker rmi reg.kyverno.io/kyverno/kyvernopre:v1.16.2 2>/dev/null || true &
+  docker rmi quay.io/cilium/tetragon:v1.6.0 2>/dev/null || true &
+  docker rmi quay.io/cilium/tetragon-operator:v1.6.0 2>/dev/null || true &
+  docker rmi quay.io/cilium/hubble-export-stdout:v1.1.0 2>/dev/null || true &
+  docker rmi nginx:latest 2>/dev/null || true &
+  docker rmi alpine:latest 2>/dev/null || true &
+  docker rmi curlimages/curl:8.10.1 2>/dev/null || true &
+  docker rmi registry.k8s.io/kubectl:v1.32.7 2>/dev/null || true &
+  wait  # 等待所有后台任务完成
 
   echo "  - distributing images to kind nodes (仅加载到 control-plane，worker 自动拉取)"
   # 优化：只加载关键镜像到节点，减少磁盘占用
@@ -737,12 +737,21 @@ if [ -f "$OFFLINE_IMAGES_FILE" ]; then
   )
   
   echo "  - loading ${#CRITICAL_IMAGES[@]} critical images to control-plane node only..."
+  # 并行加载镜像以提高速度（最多 4 个并行任务）
+  local parallel_count=0
   for img in "${CRITICAL_IMAGES[@]}"; do
     if docker image inspect "$img" > /dev/null 2>&1; then
       echo "    - kind load docker-image: $img"
-      kind load docker-image --name "$CLUSTER_NAME" "$img" 2>&1 | grep -v "^Image ID:" || true
+      kind load docker-image --name "$CLUSTER_NAME" "$img" 2>&1 | grep -v "^Image ID:" || true &
+      
+      ((parallel_count++))
+      if [ $parallel_count -ge 4 ]; then
+        wait -n  # 等待至少一个后台任务完成，继续启动下一个
+        ((parallel_count--))
+      fi
     fi
   done
+  wait  # 等待所有剩余的后台任务完成
   
   echo "  - 其他镜像将自动从节点本地 containerd 拉取（如果存在）或从网络拉取"
 else
@@ -819,7 +828,7 @@ echo "  - skip sesource/kyverno.yaml (CRD 版本不兼容)"
 echo "  - skip sesource/tetragon.yaml (暂不需要)"
 
 echo "11) 等待 Pod 就绪"
-kubectl wait --for=condition=Ready pod --all --all-namespaces --timeout=300s || true
+kubectl wait --for=condition=Ready pod --all --all-namespaces --timeout=120s 2>/dev/null || true
 
 echo ""
 echo "=========================================="
