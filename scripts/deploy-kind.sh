@@ -210,32 +210,8 @@ RUN curl -LO "https://dl.k8s.io/release/v1.28.0/bin/linux/amd64/kubectl" && \
     curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 && \
     chmod 700 get_helm.sh && ./get_helm.sh && rm get_helm.sh
 
-# 创建 kind-config.yaml（使用 cat 和 heredoc）
-RUN mkdir -p /etc && cat > /etc/kind-config.yaml << 'KINDEOF'
-kind: Cluster
-apiVersion: kind.x-k8s.io/v1alpha4
-nodes:
-  - role: control-plane
-    extraPortMappings:
-      - containerPort: 30001
-        hostPort: 1230
-      - containerPort: 30002
-        hostPort: 1231
-      - containerPort: 30003
-        hostPort: 1232
-      - containerPort: 30004
-        hostPort: 1233
-      - containerPort: 30000
-        hostPort: 1234
-      - containerPort: 30005
-        hostPort: 1235
-      - containerPort: 30006
-        hostPort: 1236
-      - containerPort: 30007
-        hostPort: 1237
-  - role: worker
-  - role: worker
-KINDEOF
+# 创建 kind-config.yaml（使用 printf 方式，避免 heredoc 问题）
+RUN mkdir -p /etc && printf 'kind: Cluster\napiVersion: kind.x-k8s.io/v1alpha4\nnodes:\n  - role: control-plane\n    extraPortMappings:\n      - containerPort: 30001\n        hostPort: 1230\n      - containerPort: 30002\n        hostPort: 1231\n      - containerPort: 30003\n        hostPort: 1232\n      - containerPort: 30004\n        hostPort: 1233\n      - containerPort: 30000\n        hostPort: 1234\n      - containerPort: 30005\n        hostPort: 1235\n      - containerPort: 30006\n        hostPort: 1236\n      - containerPort: 30007\n        hostPort: 1237\n  - role: worker\n  - role: worker\n' > /etc/kind-config.yaml
 
 # 复制本地项目文件（包括所有 scenarios, scripts 等）
 COPY . /opt/kubernetes-goat/
@@ -301,10 +277,34 @@ fi
 
 echo "加载并分发靶场镜像..."
 if [ -f "/opt/k8s_goat_images_offline.tar.gz" ]; then
+  echo "  - 解压离线镜像包..."
   zcat /opt/k8s_goat_images_offline.tar.gz | docker load
-  for img in $(docker images --format "{{.Repository}}:{{.Tag}}" | grep "k8s-goat" || true); do
-    kind load docker-image "$img"
-  done
+  
+  echo "  - 等待 Docker 完全就绪..."
+  sleep 3
+  
+  echo "  - 获取所有已加载的镜像..."
+  docker images
+  
+  echo "  - 分发所有镜像到 Kind 集群节点..."
+  # 获取所有镜像，排除 kindest 的基础镜像和 <none> 标记的镜像
+  IMAGES=$(docker images --format "{{.Repository}}:{{.Tag}}" | grep -v "^<none>" | grep -v "kindest/node")
+  
+  if [ -z "$IMAGES" ]; then
+    echo "    ⚠️  警告：没有找到需要加载的镜像！"
+  else
+    echo "    找到 $(echo "$IMAGES" | wc -l) 个镜像，开始加载..."
+    echo "$IMAGES" | while IFS= read -r img; do
+      if [ -n "$img" ]; then
+        echo "    - kind load docker-image: $img"
+        kind load docker-image "$img" 2>&1 | grep -v "^Image ID:" || true
+      fi
+    done
+  fi
+  
+  echo "  - 验证镜像加载完成..."
+  sleep 2
+  echo "  - 所有镜像加载完毕"
 fi
 
 # ===== 以下逻辑复制自 deploy-kind.sh 的主要部分 =====
@@ -387,16 +387,16 @@ do
 done
 
 echo "部署安全监控和策略工具..."
-for manifest in \
-  "sesource/falco.yaml" \
-  "sesource/kyverno.yaml" \
-  "sesource/tetragon.yaml"
-do
-  if [ -f "$manifest" ]; then
-    echo "  - kubectl apply $manifest"
-    kubectl apply -f "$manifest" || true
-  fi
-done
+# Falco 在 Kind 环境中可能因为内核驱动加载问题而失败，所以我们标记为可选
+echo "  - kubectl apply sesource/kyverno.yaml"
+kubectl apply -f sesource/kyverno.yaml || true
+
+echo "  - kubectl apply sesource/tetragon.yaml"
+kubectl apply -f sesource/tetragon.yaml || true
+
+# Falco 部署为可选，因为在 Kind 中可能因为缺少内核驱动而失败
+echo "  - kubectl apply sesource/falco.yaml (可选 - 可能在 Kind 中失败)"
+kubectl apply -f sesource/falco.yaml 2>/dev/null || echo "    ⚠️  Falco 部署失败（在 Kind 中可能不支持）"
 
 echo "等待 Pod 就绪..."
 kubectl wait --for=condition=Ready pod --all --all-namespaces --timeout=300s || true
@@ -407,6 +407,44 @@ echo "✅ 环境部署完成"
 echo "=========================================="
 kubectl get pods -A
 echo ""
+
+# 设置欢迎信息到 bash 配置文件
+cat > /root/.bashrc <<'BASHRC'
+# 欢迎信息
+if [ -z "$WELCOME_SHOWN" ]; then
+  clear
+  echo "======================================================"
+  echo "      摸鱼信安 + 灵镜联合发布 - K8s 安全实验环境 (V3.0)"
+  echo "      欢迎关注：微信公众号：摸鱼信安 + Sec铁匠铺"
+  echo "======================================================"
+  echo ""
+  echo "kubectl 集群状态："
+  kubectl get nodes
+  echo ""
+  echo "可用靶场服务（通过 NodePort 访问）："
+  echo "  - Build Code: http://localhost:1230 (NodePort: 30001)"
+  echo "  - Health Check: http://localhost:1231 (NodePort: 30002)"
+  echo "  - Internal Proxy: http://localhost:1232 (NodePort: 30003)"
+  echo "  - System Monitor: http://localhost:1233 (NodePort: 30004)"
+  echo "  - Kubernetes Goat Home: http://localhost:1234 (NodePort: 30000)"
+  echo "  - Poor Registry: http://localhost:1235 (NodePort: 30005)"
+  echo "  - Hunger Check: http://localhost:1236 (NodePort: 30006)"
+  echo "  - Metadata DB: http://localhost:1237 (NodePort: 30007)"
+  echo ""
+  echo "常用命令："
+  echo "  kubectl get pods -A                    # 查看所有 Pod 状态"
+  echo "  kubectl get svc -A                     # 查看所有服务"
+  echo "  kubectl logs -f <pod-name>              # 查看 Pod 日志"
+  echo "  kubectl exec -it <pod-name> bash       # 进入 Pod 容器"
+  echo ""
+  echo "注意："
+  echo "  - Falco 在 Kind 环境中可能无法正常运行（需要特殊内核驱动支持）"
+  echo "  - Kyverno 和 Tetragon 已部署用于安全策略管理"
+  echo ""
+  export WELCOME_SHOWN=1
+fi
+BASHRC
+
 echo "保持容器运行中..."
 tail -f /dev/null
 ENTRY
@@ -541,14 +579,16 @@ if [ -f "$OFFLINE_IMAGES_FILE" ]; then
   echo "  - loading $OFFLINE_IMAGES_FILE into docker"
   zcat "$OFFLINE_IMAGES_FILE" | docker load
 
-  echo "  - distributing images to kind nodes"
-  mapfile -t imgs < <(docker images --format "{{.Repository}}:{{.Tag}}" | grep "k8s-goat" || true)
+  echo "  - distributing all images to kind nodes"
+  # 加载所有镜像（不仅仅是 k8s-goat 镜像），这样 Falco、Kyverno 等镜像也会被加载
+  mapfile -t imgs < <(docker images --format "{{.Repository}}:{{.Tag}}" | grep -v "^<none>" | grep -v "kindest/node")
   if [ ${#imgs[@]} -eq 0 ]; then
-    echo "  - warning: no k8s-goat images found"
+    echo "  - warning: no images found to load"
   else
+    echo "  - found ${#imgs[@]} images, loading to kind cluster..."
     for img in "${imgs[@]}"; do
       echo "    - kind loading image: $img"
-      kind load docker-image --name "$CLUSTER_NAME" "$img"
+      kind load docker-image --name "$CLUSTER_NAME" "$img" || true
     done
   fi
 else

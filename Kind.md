@@ -14,18 +14,18 @@ docker+kind+kubernetes-goat+docker 容器运行时
 
 ```bash
 aquasec/kube-bench:latest
-madhuakula/hacker-container:latest                                                           b5ea0fd114fb       1.68GB          444MB
-madhuakula/k8s-goat-batch-check:latest                                                       8642ce33d356        247MB         90.7MB
-madhuakula/k8s-goat-build-code:latest                                                        0636439aab95        248MB         88.9MB
-madhuakula/k8s-goat-cache-store:latest                                                       4b00de713d8d       41.1MB         11.3MB
-madhuakula/k8s-goat-health-check:latest                                                      19561147b9ef       1.63GB          449MB
-madhuakula/k8s-goat-hidden-in-layers:latest                                                  77419a519bc8       11.1MB         3.41MB
-madhuakula/k8s-goat-home:latest                                                              0fe58ea33370       20.7MB         6.62MB
-madhuakula/k8s-goat-hunger-check:latest                                                      d0bac8391a0a        266MB         80.5MB
-madhuakula/k8s-goat-info-app:latest                                                          31eaaecaff18        100MB         24.4MB
-madhuakula/k8s-goat-internal-api:latest                                                      afcafd473273        231MB         58.8MB
-madhuakula/k8s-goat-metadata-db:latest                                                       ef7031853252        493MB          123MB
-madhuakula/k8s-goat-poor-registry:latest                                                     fc084e703a55        143MB         63.4MB
+madhuakula/hacker-container:latest
+madhuakula/k8s-goat-batch-check:latest
+madhuakula/k8s-goat-build-code:latest
+madhuakula/k8s-goat-cache-store:latest
+madhuakula/k8s-goat-health-check:latest
+madhuakula/k8s-goat-hidden-in-layers:latest
+madhuakula/k8s-goat-home:latest
+madhuakula/k8s-goat-hunger-check:latest
+madhuakula/k8s-goat-info-app:latest
+madhuakula/k8s-goat-internal-api:latest
+madhuakula/k8s-goat-metadata-db:latest
+madhuakula/k8s-goat-poor-registry:latest
 madhuakula/k8s-goat-system-monitor:latest
 madhuakula/k8s-goat-helm-tiller:latest
 docker.io/falcosecurity/falco:0.42.1
