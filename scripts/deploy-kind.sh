@@ -400,7 +400,21 @@ do
   fi
 done
 
-echo "10) 等待 Pod 就绪"
+echo "10) 部署安全监控和策略工具"
+for manifest in \
+  "sesource/falco.yaml" \
+  "sesource/kyverno.yaml" \
+  "sesource/tetragon.yaml"
+do
+  if [ -f "$manifest" ]; then
+    echo "  - kubectl apply $manifest (安全工具)"
+    kubectl apply -f "$manifest" || true
+  else
+    echo "  - skip $manifest (not found)"
+  fi
+done
+
+echo "11) 等待 Pod 就绪"
 kubectl wait --for=condition=Ready pod --all --all-namespaces --timeout=300s || true
 
 echo ""
