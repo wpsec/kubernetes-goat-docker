@@ -65,6 +65,6 @@ spec:
     - protocol: TCP
       port: 8080
       targetPort: 8080
-      nodePort: 30004 # Container Escape -> host 1233
+      nodePort: 30003
   selector:
     app: system-monitor

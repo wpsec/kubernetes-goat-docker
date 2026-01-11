@@ -50,9 +50,9 @@ spec:
       protocol: TCP
       port: 3000
       targetPort: 3000
-      nodePort: 30003 # SSRF in K8s -> host 1232
+      nodePort: 30002
     - name: info-port
       protocol: TCP
       port: 5000
       targetPort: 5000
-      nodePort: 30006 # info app -> host 1236
+      nodePort: 30012

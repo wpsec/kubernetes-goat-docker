@@ -124,24 +124,23 @@ nodes:
 - role: control-plane
   extraPortMappings:
   - containerPort: 30000
-    hostPort: 1234  # kubernetes-goat-home
+    hostPort: 1230  # build-code (官方 1230)
   - containerPort: 30001
-    hostPort: 1230  # build-code
+    hostPort: 1231  # health-check (官方 1231)
   - containerPort: 30002
-    hostPort: 1231  # health-check
+    hostPort: 1232  # internal-proxy (官方 1232)
   - containerPort: 30003
-    hostPort: 1232  # internal-proxy (SSRF)
+    hostPort: 1233  # system-monitor (官方 1233)
   - containerPort: 30004
-    hostPort: 1233  # system-monitor
+    hostPort: 1234  # kubernetes-goat-home (官方首页 1234)
   - containerPort: 30005
-    hostPort: 1235  # poor-registry
+    hostPort: 1235  # poor-registry (官方 1235)
   - containerPort: 30006
-    hostPort: 1236  # hunger-check
+    hostPort: 1236  # hunger-check (官方 1236)
+  - containerPort: 30007
+    hostPort: 1237  # metadata-db (官方未暴露，暴露出来万一需要呢)
 - role: worker
 - role: worker
-networking:
-  podSubnet: "10.244.0.0/16"
-  serviceSubnet: "10.96.0.0/12"
 KINDCFG
     echo "  ✓ wrote kind-config.yaml"
   fi

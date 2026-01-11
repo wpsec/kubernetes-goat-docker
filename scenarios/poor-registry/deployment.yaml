@@ -36,6 +36,6 @@ spec:
     - protocol: TCP
       port: 5000
       targetPort: 5000
-      nodePort: 30005 # Attacking Private Registry -> host 1235
+      nodePort: 30005
   selector:
     app: poor-registry
