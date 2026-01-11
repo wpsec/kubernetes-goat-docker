@@ -50,9 +50,9 @@ spec:
       protocol: TCP
       port: 3000
       targetPort: 3000
-      nodePort: 30002
+      nodePort: 30003
     - name: info-port
       protocol: TCP
       port: 5000
       targetPort: 5000
-      nodePort: 30012
+      nodePort: 300012

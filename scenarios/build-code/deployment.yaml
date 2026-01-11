@@ -12,8 +12,6 @@ spec:
       labels:
         app: build-code
     spec:
-      # nodeSelector:
-      #   kubernetes.io/hostname: k8s-node01
       containers:
         - name: build-code
           image: madhuakula/k8s-goat-build-code
@@ -36,6 +34,6 @@ spec:
     - protocol: TCP
       port: 3000
       targetPort: 3000
-      nodePort: 30000
+      nodePort: 30001
   selector:
     app: build-code

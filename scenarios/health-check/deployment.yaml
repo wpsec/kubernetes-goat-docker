@@ -1,8 +1,3 @@
-# 注意：修改为使用 CRI Docker 而非 Containerd
-# 将容器运行时 socket 从 containerd 改为 cri-docker
-# - 之前的路径: /run/containerd/containerd.sock
-# - 当前路径: /var/run/cri-dockerd.sock (CRI Docker socket)
-# - 备选路径: /var/run/docker.sock (Docker socket)
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -16,32 +11,25 @@ spec:
       labels:
         app: health-check
     spec:
-      # nodeSelector:
-      #   kubernetes.io/hostname: k8s-node01
       containers:
         - name: health-check
           image: madhuakula/k8s-goat-health-check
-          imagePullPolicy: IfNotPresent
           resources:
             limits:
               memory: "100Mi"
               cpu: "30m"
           ports:
             - containerPort: 80
-          # 自定义配置 - 挂载 CRI Docker socket 用于 DIND (Docker-in-Docker)
-          # 已修改: 从 containerd socket 改为 cri-docker socket
+          # Custom Stuff
           securityContext:
             privileged: true
           volumeMounts:
-            # 挂载 CRI Docker socket 而不是 containerd
-            - mountPath: /var/run/cri-dockerd.sock
-              name: docker-sock-volume
+            - mountPath: /custom/containerd/containerd.sock
+              name: containerd-sock-volume
       volumes:
-        # 已修改: 从 containerd socket (/run/containerd/containerd.sock)
-        # 改为 CRI Docker socket (/var/run/cri-dockerd.sock)
-        - name: docker-sock-volume
+        - name: containerd-sock-volume
           hostPath:
-            path: /var/run/cri-dockerd.sock
+            path: /run/containerd/containerd.sock
             type: Socket
 ---
 apiVersion: v1
@@ -54,6 +42,6 @@ spec:
     - protocol: TCP
       port: 80
       targetPort: 80
-      nodePort: 30001
+      nodePort: 30002
   selector:
     app: health-check

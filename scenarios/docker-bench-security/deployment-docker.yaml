@@ -1,14 +1,18 @@
+# Docker 运行等价命令（仅供参考）:
 # docker run -it --net host --pid host --userns host --cap-add audit_control \
 #     -e DOCKER_CONTENT_TRUST=$DOCKER_CONTENT_TRUST \
 #     -v /etc:/etc:ro \
 #     -v /lib/systemd/system:/lib/systemd/system:ro \
-#     -v /usr/bin/containerd:/usr/bin/containerd:ro \
-#     -v /usr/bin/runc:/usr/bin/runc:ro \
 #     -v /usr/lib/systemd:/usr/lib/systemd:ro \
 #     -v /var/lib:/var/lib:ro \
-#     -v /var/run/docker.sock:/var/run/docker.sock:ro \
+#     -v /var/run/cri-dockerd.sock:/var/run/cri-dockerd.sock:ro \
 #     --label docker_bench_security \
 #     docker/docker-bench-security
+#
+# 注意：修改为使用 CRI Docker 而非 Containerd
+# - 已删除: /usr/bin/containerd 挂载
+# - 已删除: /usr/bin/runc 挂载
+# - 保留: /var/run/cri-dockerd.sock 挂载 (CRI Docker socket)
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -29,6 +33,8 @@ spec:
       hostNetwork: true
       securityContext:
         runAsUser: 0
+      # nodeSelector:
+      #   kubernetes.io/hostname: k8s-node01
       containers:
         - name: docker-bench
           image: madhuakula/hacker-container
@@ -58,14 +64,9 @@ spec:
             - name: lib-systemd-system-vol
               mountPath: /lib/systemd/system
               readOnly: true
-            - name: usr-bin-contained-vol
-              mountPath: /usr/bin/containerd
-              readOnly: true
-            - name: usr-bin-runc-vol
-              mountPath: /usr/bin/runc
-              readOnly: true
+            # 已修改: 使用 cri-docker socket 而不是 docker socket
             - name: docker-sock-volume
-              mountPath: /var/run/docker.sock
+              mountPath: /var/run/cri-dockerd.sock
               readOnly: true
       volumes:
         - name: var-lib-vol
@@ -80,13 +81,11 @@ spec:
         - name: lib-systemd-system-vol
           hostPath:
             path: /lib/systemd/system
-        - name: usr-bin-contained-vol
-          hostPath:
-            path: /usr/bin/containerd
-        - name: usr-bin-runc-vol
-          hostPath:
-            path: /usr/bin/runc
+        # 已修改: 使用 CRI Docker socket 而不是 Docker socket
+        # - 已删除: /usr/bin/containerd 挂载
+        # - 已删除: /usr/bin/runc 挂载
+        # 仅使用 CRI Docker socket 来访问容器运行时
         - name: docker-sock-volume
           hostPath:
-            path: /var/run/docker.sock
-            type: DirectoryOrCreate
+            path: /var/run/cri-dockerd.sock
+            type: Socket
