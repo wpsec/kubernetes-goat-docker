@@ -6,6 +6,24 @@ set -euo pipefail
 # 自动检测环境 - 如果缺少 kubectl/kind/helm，自动启动 DinD 容器进行离线部署
 # 支持代理: 设置环境变量 HTTP_PROXY/HTTPS_PROXY 或使用 --proxy 参数
 
+# ========== 计时功能 ==========
+SCRIPT_START_TIME=$(date +%s)
+
+format_duration() {
+  local seconds=$1
+  local hours=$((seconds / 3600))
+  local minutes=$(((seconds % 3600) / 60))
+  local secs=$((seconds % 60))
+  
+  if [ $hours -gt 0 ]; then
+    printf "%d 小时 %d 分钟 %d 秒" $hours $minutes $secs
+  elif [ $minutes -gt 0 ]; then
+    printf "%d 分钟 %d 秒" $minutes $secs
+  else
+    printf "%d 秒" $secs
+  fi
+}
+
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 
@@ -153,7 +171,7 @@ bootstrap_dind() {
   IMAGE_TAG="kind-k8s-goat-moyusec-lingjing:v3.0"
   
   # Write kind-config.yaml (officially aligned port mappings)
-  # 减少节点数量以节省磁盘空间：1 control-plane + 1 worker = 2 节点
+  # 3 个节点：1 control-plane + 2 worker
   if [ ! -f "$ROOT_DIR/kind-config.yaml" ]; then
     cat > "$ROOT_DIR/kind-config.yaml" <<'KINDCFG'
 kind: Cluster
@@ -177,6 +195,7 @@ nodes:
         hostPort: 1236
       - containerPort: 30007  # metadata-db
         hostPort: 1237
+  - role: worker
   - role: worker
 
 KINDCFG
@@ -210,8 +229,8 @@ RUN curl -LO "https://dl.k8s.io/release/v1.28.0/bin/linux/amd64/kubectl" && \
     curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 && \
     chmod 700 get_helm.sh && ./get_helm.sh && rm get_helm.sh
 
-# 创建 kind-config.yaml（使用 printf 方式，避免 heredoc 问题）
-RUN mkdir -p /etc && printf 'kind: Cluster\napiVersion: kind.x-k8s.io/v1alpha4\nnodes:\n  - role: control-plane\n    extraPortMappings:\n      - containerPort: 30001\n        hostPort: 1230\n      - containerPort: 30002\n        hostPort: 1231\n      - containerPort: 30003\n        hostPort: 1232\n      - containerPort: 30004\n        hostPort: 1233\n      - containerPort: 30000\n        hostPort: 1234\n      - containerPort: 30005\n        hostPort: 1235\n      - containerPort: 30006\n        hostPort: 1236\n      - containerPort: 30007\n        hostPort: 1237\n  - role: worker\n' > /etc/kind-config.yaml
+# 创建 kind-config.yaml（使用 printf 方式，避免 heredoc 问题，3 个节点：1 control-plane + 2 worker）
+RUN mkdir -p /etc && printf 'kind: Cluster\napiVersion: kind.x-k8s.io/v1alpha4\nnodes:\n  - role: control-plane\n    extraPortMappings:\n      - containerPort: 30001\n        hostPort: 1230\n      - containerPort: 30002\n        hostPort: 1231\n      - containerPort: 30003\n        hostPort: 1232\n      - containerPort: 30004\n        hostPort: 1233\n      - containerPort: 30000\n        hostPort: 1234\n      - containerPort: 30005\n        hostPort: 1235\n      - containerPort: 30006\n        hostPort: 1236\n      - containerPort: 30007\n        hostPort: 1237\n  - role: worker\n  - role: worker\n' > /etc/kind-config.yaml
 
 # 复制本地项目文件（包括所有 scenarios, scripts 等）
 COPY . /opt/kubernetes-goat/
@@ -282,6 +301,11 @@ echo "加载并分发靶场镜像..."
 if [ -f "/opt/k8s_goat_images_offline.tar.gz" ]; then
   echo "  - 解压离线镜像包..."
   zcat /opt/k8s_goat_images_offline.tar.gz | docker load
+  
+  echo "  - 删除不需要的 Falco 镜像..."
+  docker rmi falcosecurity/falco:0.42.1 2>/dev/null || true
+  docker rmi falcosecurity/falco-driver-loader:0.42.1 2>/dev/null || true
+  docker rmi falcosecurity/falcoctl:0.11.4 2>/dev/null || true
   
   echo "  - 等待 Docker 完全就绪..."
   sleep 3
@@ -391,16 +415,14 @@ do
 done
 
 echo "部署安全监控和策略工具..."
-# Falco 在 Kind 环境中可能因为内核驱动加载问题而失败，所以我们标记为可选
+# Falco 跳过（在 Kind 环境中因为内核驱动限制无法运行）
+echo "  - skip sesource/falco.yaml (不支持 Kind 环境 - 需要内核驱动)"
+
 echo "  - kubectl apply sesource/kyverno.yaml"
 kubectl apply -f sesource/kyverno.yaml || true
 
 echo "  - kubectl apply sesource/tetragon.yaml"
 kubectl apply -f sesource/tetragon.yaml || true
-
-# Falco 部署为可选，因为在 Kind 中可能因为缺少内核驱动而失败
-echo "  - kubectl apply sesource/falco.yaml (可选 - 可能在 Kind 中失败)"
-kubectl apply -f sesource/falco.yaml 2>/dev/null || echo "    ⚠️  Falco 部署失败（在 Kind 中可能不支持）"
 
 echo "等待 Pod 就绪..."
 kubectl wait --for=condition=Ready pod --all --all-namespaces --timeout=300s || true
@@ -630,6 +652,11 @@ if [ -f "$OFFLINE_IMAGES_FILE" ]; then
   echo "  - loading $OFFLINE_IMAGES_FILE into docker"
   zcat "$OFFLINE_IMAGES_FILE" | docker load
 
+  echo "  - 删除不需要的 Falco 镜像..."
+  docker rmi falcosecurity/falco:0.42.1 2>/dev/null || true
+  docker rmi falcosecurity/falco-driver-loader:0.42.1 2>/dev/null || true
+  docker rmi falcosecurity/falcoctl:0.11.4 2>/dev/null || true
+
   echo "  - distributing images to kind nodes (仅加载到 control-plane，worker 自动拉取)"
   # 优化：只加载关键镜像到节点，减少磁盘占用
   # 关键镜像列表（必须在节点上可用的）
@@ -721,8 +748,10 @@ do
 done
 
 echo "10) 部署安全监控和策略工具"
+# Falco 跳过（在 Kind 环境中因为内核驱动限制无法运行）
+echo "  - skip sesource/falco.yaml (不支持 Kind 环境 - 需要内核驱动)"
+
 for manifest in \
-  "sesource/falco.yaml" \
   "sesource/kyverno.yaml" \
   "sesource/tetragon.yaml"
 do
@@ -743,3 +772,12 @@ echo "✅ 环境部署完成"
 echo "=========================================="
 kubectl get pods -A
 kubectl get svc -A
+
+# ========== 显示总耗时 ==========
+SCRIPT_END_TIME=$(date +%s)
+TOTAL_TIME=$((SCRIPT_END_TIME - SCRIPT_START_TIME))
+DURATION=$(format_duration $TOTAL_TIME)
+echo ""
+echo "=========================================="
+echo "⏱️  总耗时：$DURATION"
+echo "=========================================="
