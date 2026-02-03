@@ -3,36 +3,13 @@ set -euo pipefail
 
 # build-image.sh
 # 仅用于构建 Docker 镜像，不运行容器
-# 支持代理: 设置环境变量 HTTP_PROXY/HTTPS_PROXY 或使用 --proxy 参数
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 
-# 代理配置
-HTTP_PROXY="${HTTP_PROXY:-}"
-HTTPS_PROXY="${HTTPS_PROXY:-}"
-NO_PROXY="${NO_PROXY:-}"
-
 # 解析命令行参数
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --proxy)
-      HTTP_PROXY="$2"
-      HTTPS_PROXY="$2"
-      shift 2
-      ;;
-    --http-proxy)
-      HTTP_PROXY="$2"
-      shift 2
-      ;;
-    --https-proxy)
-      HTTPS_PROXY="$2"
-      shift 2
-      ;;
-    --no-proxy)
-      NO_PROXY="$2"
-      shift 2
-      ;;
     -h|--help)
       show_help
       exit 0
@@ -51,23 +28,9 @@ show_help() {
 用途: 仅构建 Docker 镜像（不运行容器）
 
 选项:
-  --proxy URL           同时设置 HTTP_PROXY 和 HTTPS_PROXY
-  --http-proxy URL      设置 HTTP_PROXY
-  --https-proxy URL     设置 HTTPS_PROXY
-  --no-proxy HOSTS      设置 NO_PROXY（多个主机用逗号分隔）
   -h, --help           显示此帮助信息
 
-环境变量:
-  HTTP_PROXY           HTTP 代理地址
-  HTTPS_PROXY          HTTPS 代理地址
-  NO_PROXY             不需要代理的主机列表
-
 示例:
-  # 使用代理参数
-  bash scripts/build-image.sh --proxy http://192.168.246.76:7897
-
-  # 使用环境变量
-  export HTTP_PROXY=http://192.168.246.76:7897
   bash scripts/build-image.sh
 
 EOF
@@ -81,10 +44,6 @@ fi
 
 echo "== K8s-Goat Docker 镜像构建脚本 =="
 echo "ROOT_DIR=$ROOT_DIR"
-if [ -n "$HTTP_PROXY" ]; then
-  echo "HTTP_PROXY=$HTTP_PROXY"
-  echo "HTTPS_PROXY=$HTTPS_PROXY"
-fi
 
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -140,18 +99,6 @@ if [ ! -f "$ROOT_DIR/Dockerfile" ]; then
   echo "生成 Dockerfile..."
   cat > "$ROOT_DIR/Dockerfile" <<'DOCKERF'
 FROM docker:24-dind
-
-# 接收代理参数
-ARG HTTP_PROXY=""
-ARG HTTPS_PROXY=""
-ARG NO_PROXY=""
-
-ENV HTTP_PROXY=$HTTP_PROXY
-ENV HTTPS_PROXY=$HTTPS_PROXY
-ENV NO_PROXY=$NO_PROXY
-ENV http_proxy=$HTTP_PROXY
-ENV https_proxy=$HTTPS_PROXY
-ENV no_proxy=$NO_PROXY
 
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories && \
     apk add --no-cache curl bash openssl git
@@ -383,14 +330,6 @@ echo "开始构建 Docker 镜像..."
 echo "IMAGE_TAG=$IMAGE_TAG"
 
 BUILD_ARGS=""
-if [ -n "$HTTP_PROXY" ]; then
-  BUILD_ARGS="$BUILD_ARGS --build-arg HTTP_PROXY=$HTTP_PROXY"
-  BUILD_ARGS="$BUILD_ARGS --build-arg HTTPS_PROXY=$HTTPS_PROXY"
-  if [ -n "$NO_PROXY" ]; then
-    BUILD_ARGS="$BUILD_ARGS --build-arg NO_PROXY=$NO_PROXY"
-  fi
-  echo "Build args: $BUILD_ARGS"
-fi
 
 # shellcheck disable=SC2086
 if docker build --no-cache $BUILD_ARGS -t "$IMAGE_TAG" -f "$ROOT_DIR/Dockerfile" "$ROOT_DIR"; then
