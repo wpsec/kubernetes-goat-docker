@@ -29,6 +29,8 @@ cd "$ROOT_DIR"
 CLUSTER_NAME="kind"
 KIND_NODE_IMAGE_FILE="kind_node_v1.27.3.tar.gz"
 OFFLINE_IMAGES_FILE="k8s_goat_images_offline.tar.gz"
+# 支持多种离线镜像包格式
+OFFLINE_IMAGES_FILE_ALT="k8s-goat-all-images.tar"
 KIND_CONFIG="kind-config.yaml"
 HELM_VALUES="./scenarios/metadata-db/values.yaml"
 
@@ -187,6 +189,8 @@ RUN if [ -f "/opt/kubernetes-goat/kind_node_v1.27.3.tar.gz" ]; then \
     fi && \
     if [ -f "/opt/kubernetes-goat/k8s_goat_images_offline.tar.gz" ]; then \
       mv /opt/kubernetes-goat/k8s_goat_images_offline.tar.gz /opt/; \
+    elif [ -f "/opt/kubernetes-goat/k8s-goat-all-images.tar" ]; then \
+      mv /opt/kubernetes-goat/k8s-goat-all-images.tar /opt/; \
     fi
 
 # 如果没有 scenarios 目录，从 github 克隆
@@ -263,10 +267,20 @@ kubectl taint nodes kind-control-plane node-role.kubernetes.io/control-plane:NoS
 
 echo "加载并分发靶场镜像..."
 if [ -f "/opt/k8s_goat_images_offline.tar.gz" ]; then
-  echo "  - 解压离线镜像包..."
+  echo "  - 解压离线镜像包 (gzip格式)..."
   zcat /opt/k8s_goat_images_offline.tar.gz | docker load
   
   echo "  - 删除不需要的镜像以节省磁盘空间..."
+elif [ -f "/opt/k8s-goat-all-images.tar" ]; then
+  echo "  - 加载离线镜像包 (tar格式)..."
+  docker load -i /opt/k8s-goat-all-images.tar
+  
+  echo "  - 删除不需要的镜像以节省磁盘空间..."
+else
+  echo "  - 离线镜像文件未找到，将从网络拉取镜像"
+fi
+
+if [ -f "/opt/k8s_goat_images_offline.tar.gz" ] || [ -f "/opt/k8s-goat-all-images.tar" ]; then
   # 删除不需要的镜像（使用 docker rmi 带 -f 强制删除）
   docker rmi -f falcosecurity/falco:0.42.1 2>/dev/null || true
   docker rmi -f falcosecurity/falco-driver-loader:0.42.1 2>/dev/null || true
@@ -627,8 +641,16 @@ fi
 
 echo "3) 加载离线镜像"
 if [ -f "$OFFLINE_IMAGES_FILE" ]; then
-  echo "  - loading $OFFLINE_IMAGES_FILE into docker"
+  echo "  - loading $OFFLINE_IMAGES_FILE into docker (gzip格式)"
   zcat "$OFFLINE_IMAGES_FILE" | docker load
+elif [ -f "$OFFLINE_IMAGES_FILE_ALT" ]; then
+  echo "  - loading $OFFLINE_IMAGES_FILE_ALT into docker (tar格式)"
+  docker load -i "$OFFLINE_IMAGES_FILE_ALT"
+else
+  echo "  - 离线镜像文件未找到，跳过镜像加载"
+fi
+
+if [ -f "$OFFLINE_IMAGES_FILE" ] || [ -f "$OFFLINE_IMAGES_FILE_ALT" ]; then
 
   echo "  - 删除不需要的镜像以节省磁盘空间..."
   # 删除不需要的镜像（使用 docker rmi 带 -f 强制删除）
@@ -672,7 +694,7 @@ if [ -f "$OFFLINE_IMAGES_FILE" ]; then
   
   echo "  - 其他镜像将自动从节点本地 containerd 拉取（如果存在）或从网络拉取"
 else
-  echo "  - $OFFLINE_IMAGES_FILE not found, skipping"
+  echo "  - 离线镜像文件未找到，将从网络拉取镜像"
 fi
 
 echo "4) 修正 CRI socket 路径"
