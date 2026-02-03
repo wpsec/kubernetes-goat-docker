@@ -170,9 +170,9 @@ FROM docker:24-dind
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories && \
     apk add --no-cache curl bash openssl git
 
-RUN curl -LO "https://dl.k8s.io/release/v1.28.0/bin/linux/amd64/kubectl" && \
+RUN curl -LO "https://mirrors.aliyun.com/kubernetes/v1.28.0/bin/linux/amd64/kubectl" && \
     chmod +x kubectl && mv kubectl /usr/local/bin/ && \
-    curl -Lo /usr/local/bin/kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64 && \
+    curl -Lo /usr/local/bin/kind https://github.com/kubernetes-sigs/kind/releases/download/v0.20.0/kind-linux-amd64 && \
     chmod +x /usr/local/bin/kind && \
     curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 && \
     chmod 700 get_helm.sh && ./get_helm.sh && rm get_helm.sh
@@ -525,9 +525,9 @@ ENTRY
     chmod +x "$ROOT_DIR/entrypoint.sh"
     echo "  ✓ wrote entrypoint.sh"
 
-  # Load base image if tar file exists
+  # Load base image if tar file exists, otherwise pull from Docker Hub
   if [ -f "$ROOT_DIR/docker:24-dind.tar" ]; then
-    echo "Loading docker:24-dind base image..."
+    echo "Loading docker:24-dind base image from local file..."
     BASE_IMAGE_ID=$(docker load -i "$ROOT_DIR/docker:24-dind.tar" | grep "Loaded image ID" | awk '{print $NF}')
     if [ -n "$BASE_IMAGE_ID" ]; then
       echo "  - Loaded image ID: $BASE_IMAGE_ID"
@@ -535,8 +535,9 @@ ENTRY
       echo "  - Tagged as docker:24-dind"
     fi
   else
-    echo "ERROR: docker:24-dind.tar not found at $ROOT_DIR/docker:24-dind.tar" >&2
-    exit 1
+    echo "docker:24-dind.tar not found, pulling from Docker Hub..."
+    docker pull docker:24-dind
+    echo "  - Pulled docker:24-dind from Docker Hub"
   fi
 
   # Build image
