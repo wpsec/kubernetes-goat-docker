@@ -167,8 +167,10 @@ KINDCFG
     cat > "$ROOT_DIR/Dockerfile" <<'DOCKERF'
 FROM docker:24-dind
 
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories && \
-    apk add --no-cache curl bash openssl git
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories || \
+    sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories || \
+    echo "Using default Alpine repositories" && \
+    apk update && apk add --no-cache curl bash openssl git
 
 RUN curl -LO "https://mirrors.aliyun.com/kubernetes/v1.28.0/bin/linux/amd64/kubectl" && \
     chmod +x kubectl && mv kubectl /usr/local/bin/ && \
