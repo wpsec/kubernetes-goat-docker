@@ -32,7 +32,7 @@ spec:
       containers:
         - name: docker-bench
           image: madhuakula/hacker-container
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           command: ["/bin/sh", "-c", "sleep infinity"]
           resources:
             requests:

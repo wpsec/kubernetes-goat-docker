@@ -35,5 +35,6 @@ spec:
       containers:
         - name: cache-store
           image: madhuakula/k8s-goat-cache-store
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 6379
